@@ -87,7 +87,7 @@ export function PaymentToggle({ jobId, paid }: { jobId: number; paid: boolean })
           run(() => setJobPaymentStatus(jobId, v))
         }}
       />
-      {checked ? 'Paid' : 'Unpaid'}
+      {checked ? <span className="text-paid">Paid</span> : 'Unpaid'}
     </label>
   )
 }

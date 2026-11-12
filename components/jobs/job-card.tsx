@@ -27,7 +27,7 @@ export function PaidMark({ className }: { className?: string }) {
     <span
       title="Paid"
       className={cn(
-        'inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-xs leading-none font-bold text-background',
+        'inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-paid font-mono text-xs leading-none font-bold text-paid-foreground',
         className,
       )}
     >
