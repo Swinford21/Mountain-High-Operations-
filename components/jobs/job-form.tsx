@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { NativeSelect } from '@/components/ui/native-select'
+import { AddressInput } from '@/components/address-input'
 import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
 import { OPERATIONS } from '@/lib/operations'
@@ -99,7 +100,7 @@ export function JobForm({
           defaultCustomerId={defaults.customerId}
           allowNew={mode === 'create'}
           onSelect={(c) => {
-            if (c?.address && !address) setAddress(c.address)
+            if (c) setAddress(c.address ?? '')
           }}
         />
         <div className="flex flex-col gap-2">
@@ -167,13 +168,12 @@ export function JobForm({
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-2">
           <Label htmlFor="address">Job address</Label>
-          <Input
+          <AddressInput
             id="address"
             name="address"
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Defaults to the customer's address"
-            className="h-9"
+            onValueChange={setAddress}
+            placeholder="Fills in from the customer — or start typing an address"
           />
         </div>
         <div className="flex flex-col gap-2">
