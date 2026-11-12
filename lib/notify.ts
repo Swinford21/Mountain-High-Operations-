@@ -7,6 +7,14 @@ export const BUSINESS_NAME = 'Mountain High Landscape Supply'
 export const BUSINESS_PHONE = '678-335-2565'
 export const BUSINESS_ADDRESS = '1389 Church Street Extension NW, Marietta, GA 30060'
 
+/**
+ * Email clients and Twilio fetch images by absolute URL, so the logo must point at the
+ * public production domain rather than whatever host handled the request (cron jobs have none).
+ */
+export const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://www.mountainhighops.com').replace(/\/$/, '')
+export const EMAIL_LOGO_URL = `${PUBLIC_SITE_URL}/images/logo-email.jpg`
+export const SMS_LOGO_URL = `${PUBLIC_SITE_URL}/images/logo-mms.jpg`
+
 type SendResult = { ok: true } | { ok: false; error: string }
 
 let resendClient: Resend | null = null
@@ -84,14 +92,20 @@ export async function sendEmailBatch(
   }
 }
 
-export async function sendSms(input: { to: string; body: string }): Promise<SendResult> {
+/** Texts go out as MMS with the logo attached. Pass `logo: false` to send a plain SMS. */
+export async function sendSms(input: { to: string; body: string; logo?: boolean }): Promise<SendResult> {
   const client = getTwilio()
   const from = process.env.TWILIO_PHONE_NUMBER
   if (!client || !from) return { ok: false, error: 'Texting is not configured' }
   const to = toE164(input.to)
   if (!to) return { ok: false, error: 'Invalid phone number' }
   try {
-    await client.messages.create({ to, from: toE164(from) ?? from, body: input.body })
+    await client.messages.create({
+      to,
+      from: toE164(from) ?? from,
+      body: input.body,
+      ...(input.logo === false ? {} : { mediaUrl: [SMS_LOGO_URL] }),
+    })
     return { ok: true }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Text failed' }
@@ -141,7 +155,7 @@ export function emailLayout(opts: { heading: string; paragraphs: string[]; rows?
   return `<!doctype html><html><body style="margin:0;background:#fbf6e4;font-family:Arial,Helvetica,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #ece3c3">
-<tr><td style="background:#0d2547;padding:18px 24px;border-bottom:4px solid #fca94c"><span style="color:#f2412e;font-weight:800;font-size:20px;letter-spacing:.04em;text-transform:uppercase">Mountain High</span><br/><span style="color:#fbbd1e;font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase">Landscape Supply</span></td></tr>
+<tr><td align="center" style="background:#0d2547;padding:20px 24px;border-bottom:4px solid #fca94c"><img src="${EMAIL_LOGO_URL}" width="96" height="128" alt="${BUSINESS_NAME}" style="display:block;width:96px;height:128px;border:0;outline:none;text-decoration:none;color:#fbbd1e;font-weight:700;font-size:14px" /></td></tr>
 <tr><td style="padding:24px">
 <h1 style="margin:0 0 16px;font-size:20px;color:#0d2547">${escapeHtml(opts.heading)}</h1>
 ${paragraphs}
