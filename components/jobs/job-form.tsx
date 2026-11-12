@@ -10,7 +10,7 @@ import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
 import { OPERATIONS } from '@/lib/operations'
 import type { ActionState } from '@/app/actions/jobs'
-import type { CustomerOption, ProductOption, TeamMember } from '@/lib/queries'
+import type { CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
 type JobDefaults = {
@@ -22,16 +22,19 @@ type JobDefaults = {
   durationMinutes?: number
   address?: string | null
   assignedTo?: string | null
+  truckId?: number | null
   priceCents?: number | null
   description?: string | null
 }
 
 const DURATIONS = [30, 60, 90, 120, 180, 240, 360, 480]
+const DEFAULT_DURATION = 60
 
 export function JobForm({
   action,
   customers,
   team,
+  trucks,
   products,
   initialItems = [],
   defaults,
@@ -40,6 +43,7 @@ export function JobForm({
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>
   customers: CustomerOption[]
   team: TeamMember[]
+  trucks: TruckOption[]
   products: ProductOption[]
   initialItems?: MaterialLine[]
   defaults: JobDefaults
@@ -51,8 +55,10 @@ export function JobForm({
   const [title, setTitle] = useState(defaults.title ?? '')
   const [price, setPrice] = useState(defaults.priceCents != null ? (defaults.priceCents / 100).toFixed(2) : '')
   const [priceTouched, setPriceTouched] = useState(defaults.priceCents != null)
+  const [truckId, setTruckId] = useState(defaults.truckId != null ? String(defaults.truckId) : '')
+  const selectedTruck = trucks.find((t) => String(t.id) === truckId)
 
-  const durationOptions = DURATIONS.includes(defaults.durationMinutes ?? 120)
+  const durationOptions = DURATIONS.includes(defaults.durationMinutes ?? DEFAULT_DURATION)
     ? DURATIONS
     : [...DURATIONS, defaults.durationMinutes!].sort((a, b) => a - b)
 
@@ -110,7 +116,7 @@ export function JobForm({
         </div>
       </section>
 
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <div className="flex flex-col gap-2">
           <Label htmlFor="scheduledDate">Date</Label>
           <Input id="scheduledDate" name="scheduledDate" type="date" required defaultValue={defaults.scheduledDate} className="h-9" />
@@ -121,7 +127,7 @@ export function JobForm({
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="durationMinutes">Length</Label>
-          <NativeSelect id="durationMinutes" name="durationMinutes" defaultValue={String(defaults.durationMinutes ?? 120)}>
+          <NativeSelect id="durationMinutes" name="durationMinutes" defaultValue={String(defaults.durationMinutes ?? DEFAULT_DURATION)}>
             {durationOptions.map((m) => (
               <option key={m} value={m}>
                 {m < 60 ? `${m} min` : `${m / 60} hr${m === 60 ? '' : 's'}`}
@@ -136,6 +142,22 @@ export function JobForm({
             {team.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="truckId" className="flex items-center gap-2">
+            Truck
+            {selectedTruck && (
+              <span className="size-2.5 rounded-sm" style={{ backgroundColor: selectedTruck.color }} aria-hidden="true" />
+            )}
+          </Label>
+          <NativeSelect id="truckId" name="truckId" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
+            <option value="">No truck</option>
+            {trucks.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
               </option>
             ))}
           </NativeSelect>

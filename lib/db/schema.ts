@@ -88,9 +88,10 @@ export const jobs = pgTable('jobs', {
   address: text('address'),
   scheduledDate: date('scheduled_date', { mode: 'string' }).notNull(),
   startTime: text('start_time').notNull().default('08:00'),
-  durationMinutes: integer('duration_minutes').notNull().default(120),
+  durationMinutes: integer('duration_minutes').notNull().default(60),
   status: text('status').notNull().default('scheduled'),
   assignedTo: text('assigned_to'),
+  truckId: integer('truck_id'),
   priceCents: integer('price_cents'),
   paymentStatus: text('payment_status').notNull().default('unpaid'),
   confirmationSentAt: timestamp('confirmation_sent_at', { withTimezone: true }),
@@ -98,6 +99,15 @@ export const jobs = pgTable('jobs', {
   createdBy: text('created_by').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const trucks = pgTable('trucks', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  color: text('color').notNull(),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const timeEntries = pgTable('time_entries', {

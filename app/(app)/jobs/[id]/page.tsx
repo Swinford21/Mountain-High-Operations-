@@ -31,7 +31,7 @@ export default async function JobDetailPage({
   if (!Number.isInteger(jobId)) notFound()
   const detail = await getJobDetail(jobId)
   if (!detail) notFound()
-  const { job, customer, assigneeName } = detail
+  const { job, customer, assigneeName, truckName, truckColor } = detail
   const op = getOperation(job.operation)
   const address = job.address || customer.address
   const endMinutes = Number(job.startTime.slice(0, 2)) * 60 + Number(job.startTime.slice(3)) + job.durationMinutes
@@ -107,6 +107,15 @@ export default async function JobDetailPage({
                 <div className="flex flex-col gap-1">
                   <dt className="text-muted-foreground">Assigned to</dt>
                   <dd className="font-medium">{assigneeName ?? 'Unassigned'}</dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-muted-foreground">Truck</dt>
+                  <dd className="flex items-center gap-2 font-medium">
+                    {truckColor && (
+                      <span className="size-2.5 rounded-sm" style={{ backgroundColor: truckColor }} aria-hidden="true" />
+                    )}
+                    {truckName ?? 'No truck'}
+                  </dd>
                 </div>
                 <div className="flex flex-col gap-1 sm:col-span-2">
                   <dt className="text-muted-foreground">Address</dt>
