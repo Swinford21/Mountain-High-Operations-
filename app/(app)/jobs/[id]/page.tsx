@@ -10,7 +10,7 @@ import { JobAdminActions, PaymentApplyButton, PaymentToggle } from '@/components
 import { db } from '@/lib/db'
 import { jobNotes, messageLog, payments, user } from '@/lib/db/schema'
 import { InternalNotes } from '@/components/jobs/internal-notes'
-import { addJobNote, deleteJobNote } from '@/app/actions/job-notes'
+import { addAdminNote, addCrewNote, deleteJobNote } from '@/app/actions/job-notes'
 import { getOperation } from '@/lib/operations'
 import { getJobDetail, getJobItems } from '@/lib/queries'
 import { requireUser } from '@/lib/session'
@@ -41,22 +41,29 @@ export default async function JobDetailPage({
 
   const [items, noteRows] = await Promise.all([
     getJobItems(job.id),
-    isAdmin
-      ? db
-          .select({ id: jobNotes.id, body: jobNotes.body, authorName: user.name, createdAt: jobNotes.createdAt })
-          .from(jobNotes)
-          .leftJoin(user, eq(user.id, jobNotes.authorId))
-          .where(eq(jobNotes.jobId, job.id))
-          .orderBy(asc(jobNotes.createdAt))
-      : Promise.resolve([]),
+    db
+      .select({
+        id: jobNotes.id,
+        body: jobNotes.body,
+        authorId: jobNotes.authorId,
+        visibility: jobNotes.visibility,
+        authorName: user.name,
+        createdAt: jobNotes.createdAt,
+      })
+      .from(jobNotes)
+      .leftJoin(user, eq(user.id, jobNotes.authorId))
+      .where(isAdmin ? eq(jobNotes.jobId, job.id) : and(eq(jobNotes.jobId, job.id), eq(jobNotes.visibility, 'crew')))
+      .orderBy(asc(jobNotes.createdAt)),
   ])
-  const internalNotes = noteRows.map((n) => ({
+  const toNote = (n: (typeof noteRows)[number]) => ({
     id: n.id,
     body: n.body,
     authorName: n.authorName,
     createdAt: n.createdAt.toISOString(),
-    canDelete: true,
-  }))
+    canDelete: isAdmin || n.authorId === me.id,
+  })
+  const crewNotes = noteRows.filter((n) => n.visibility !== 'admin').map(toNote)
+  const adminNotes = isAdmin ? noteRows.filter((n) => n.visibility === 'admin').map(toNote) : []
   const [messages, customerPayments] = isAdmin
     ? await Promise.all([
         db.select().from(messageLog).where(eq(messageLog.jobId, job.id)).orderBy(desc(messageLog.createdAt)).limit(20),
@@ -85,6 +92,7 @@ export default async function JobDetailPage({
       <PageHeader
         eyebrow={`${op.singular} · Job #${job.id}`}
         title={job.title}
+        titleClassName={crewNotes.length > 0 ? 'text-destructive' : undefined}
         description={
           <span className="flex flex-wrap items-center gap-2">
             {formatDateLong(job.scheduledDate)}, {formatTime12(job.startTime)}–{formatTime12(endTime)}
@@ -163,8 +171,26 @@ export default async function JobDetailPage({
               </dl>
             </section>
 
+            <InternalNotes
+              variant="crew"
+              title="Crew notes"
+              description="Shared with the whole team. Customers never see these. Jobs with crew notes show their title in red."
+              placeholder="Gate code, where to dump, anything the crew should know…"
+              targetId={job.id}
+              notes={crewNotes}
+              addAction={addCrewNote}
+              deleteAction={deleteJobNote}
+            />
             {isAdmin && (
-              <InternalNotes targetId={job.id} notes={internalNotes} addAction={addJobNote} deleteAction={deleteJobNote} />
+              <InternalNotes
+                title="Admin notes"
+                description="Admins only. Crew and customers never see these, and they are never included in emails or texts."
+                placeholder="Private note for admins…"
+                targetId={job.id}
+                notes={adminNotes}
+                addAction={addAdminNote}
+                deleteAction={deleteJobNote}
+              />
             )}
 
             {items.length > 0 && (

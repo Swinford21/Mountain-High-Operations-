@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useTransition } from 'react'
-import { Lock, Trash2 } from 'lucide-react'
+import { useActionState, useEffect, useId, useRef, useTransition } from 'react'
+import { Lock, Trash2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionState } from '@/app/actions/jobs'
+import { cn } from '@/lib/utils'
 
 export type InternalNote = {
   id: number
@@ -20,14 +21,24 @@ export function InternalNotes({
   notes,
   addAction,
   deleteAction,
+  title = 'Internal notes',
+  description = 'Admins only. Customers and crew never see these, and they are never included in emails or texts.',
+  placeholder = 'Leave a note for the team…',
+  variant = 'admin',
 }: {
   targetId: number
   notes: InternalNote[]
   addAction: (prev: ActionState, formData: FormData) => Promise<ActionState>
   deleteAction: (noteId: number) => Promise<ActionState>
+  title?: string
+  description?: string
+  placeholder?: string
+  variant?: 'admin' | 'crew'
 }) {
+  const id = useId()
   const [state, formAction, pending] = useActionState(addAction, null)
   const formRef = useRef<HTMLFormElement>(null)
+  const Icon = variant === 'admin' ? Lock : Users
 
   useEffect(() => {
     if (!state) return
@@ -36,15 +47,23 @@ export function InternalNotes({
   }, [state])
 
   return (
-    <section aria-labelledby="internal-notes-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+    <section
+      aria-labelledby={`${id}-heading`}
+      className={cn(
+        'flex flex-col gap-4 rounded-xl border bg-card p-5',
+        variant === 'crew' && notes.length > 0 && 'border-destructive/40',
+      )}
+    >
       <div className="flex flex-col gap-1">
-        <h2 id="internal-notes-heading" className="flex items-center gap-2 font-semibold">
-          <Lock className="size-4 text-muted-foreground" aria-hidden="true" />
-          Internal notes
+        <h2
+          id={`${id}-heading`}
+          className={cn('flex items-center gap-2 font-semibold', variant === 'crew' && notes.length > 0 && 'text-destructive')}
+        >
+          <Icon className="size-4" aria-hidden="true" />
+          {title}
+          {notes.length > 0 && <span className="text-sm font-normal text-muted-foreground">({notes.length})</span>}
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Admins only. Customers and crew never see these, and they are never included in emails or texts.
-        </p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       {notes.length > 0 && (
@@ -57,16 +76,16 @@ export function InternalNotes({
 
       <form ref={formRef} action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="targetId" value={targetId} />
-        <label htmlFor="internal-note" className="sr-only">
-          Add an internal note
+        <label htmlFor={`${id}-body`} className="sr-only">
+          Add to {title.toLowerCase()}
         </label>
         <Textarea
-          id="internal-note"
+          id={`${id}-body`}
           name="body"
           rows={3}
           required
           maxLength={4000}
-          placeholder="Leave a note for the team…"
+          placeholder={placeholder}
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return
             if (e.nativeEvent.isComposing || e.keyCode === 229) return

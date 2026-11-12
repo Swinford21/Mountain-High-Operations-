@@ -56,7 +56,10 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
           {job.status !== 'scheduled' && <StatusBadge status={job.status} />}
           {job.paymentStatus === 'paid' && <PaidMark />}
         </div>
-        <span className="font-semibold text-pretty group-hover:underline">{job.title}</span>
+        <span className={cn('font-semibold text-pretty group-hover:underline', job.hasCrewNotes && 'text-destructive')}>
+          {job.title}
+          {job.hasCrewNotes && <span className="sr-only"> (has crew notes)</span>}
+        </span>
         <span className="text-sm text-muted-foreground">{job.customerName}</span>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {address && (

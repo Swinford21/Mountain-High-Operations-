@@ -192,6 +192,8 @@ export const jobNotes = pgTable('job_notes', {
   jobId: integer('job_id').notNull(),
   authorId: text('author_id').notNull(),
   body: text('body').notNull(),
+  /** 'crew' notes are visible to the whole team; 'admin' notes only to admins. */
+  visibility: text('visibility').notNull().default('crew'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

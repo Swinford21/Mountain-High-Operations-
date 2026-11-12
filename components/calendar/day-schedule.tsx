@@ -238,7 +238,10 @@ function JobItem({
       <span className="my-1.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: jobColor(job) }} aria-hidden="true" />
       <Link href={`/jobs/${job.id}`} className="group flex min-w-0 flex-1 flex-col px-2 py-1.5 text-sm">
         <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate font-medium group-hover:underline">{job.title}</span>
+          <span className={`truncate font-medium group-hover:underline ${job.hasCrewNotes ? 'text-destructive' : ''}`}>
+            {job.title}
+            {job.hasCrewNotes && <span className="sr-only"> (has crew notes)</span>}
+          </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {isAdmin && job.priceCents != null && (
               <span className="font-mono text-xs tabular-nums">{formatMoney(job.priceCents)}</span>

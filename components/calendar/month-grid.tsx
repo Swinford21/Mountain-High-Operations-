@@ -114,7 +114,10 @@ export function MonthGrid({
                     >
                       <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                       <span className="font-mono tabular-nums">{formatTime12(j.startTime).replace(':00', '')}</span>
-                      <span className="min-w-0 flex-1 truncate">{j.title}</span>
+                      <span className={`min-w-0 flex-1 truncate ${j.hasCrewNotes ? 'font-semibold text-destructive' : ''}`}>
+                        {j.title}
+                        {j.hasCrewNotes && <span className="sr-only"> (has crew notes)</span>}
+                      </span>
                       {j.paymentStatus === 'paid' && <PaidMark />}
                     </span>
                   )
