@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { Lock, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -202,15 +203,45 @@ export function JobForm({
       />
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="description">Notes for crew and customer</Label>
+        <Label htmlFor="description">Notes for customer</Label>
         <Textarea
           id="description"
           name="description"
           rows={4}
           defaultValue={defaults.description ?? ''}
-          placeholder="Materials, gate code, where to dump, special instructions…"
+          placeholder="Anything the customer should see in their confirmation…"
         />
+        <p className="text-sm text-muted-foreground">Included in the customer&apos;s confirmation email and text.</p>
       </div>
+
+      {mode === 'create' && (
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+            <Label htmlFor="crewNote" className="flex items-center gap-2">
+              <Users className="size-4" aria-hidden="true" />
+              Crew notes
+            </Label>
+            <Textarea
+              id="crewNote"
+              name="crewNote"
+              rows={3}
+              maxLength={4000}
+              placeholder="Gate code, where to dump, anything the crew should know…"
+            />
+            <p className="text-sm text-muted-foreground">
+              Whole team can see these. Customers never do. The job title shows in red when there are crew notes.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+            <Label htmlFor="adminNote" className="flex items-center gap-2">
+              <Lock className="size-4" aria-hidden="true" />
+              Admin notes
+            </Label>
+            <Textarea id="adminNote" name="adminNote" rows={3} maxLength={4000} placeholder="Private note for admins…" />
+            <p className="text-sm text-muted-foreground">Admins only. Crew and customers never see these.</p>
+          </div>
+        </section>
+      )}
 
       <div className="flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex items-start gap-3 text-sm">

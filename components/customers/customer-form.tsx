@@ -14,6 +14,7 @@ type Defaults = {
   email?: string | null
   phone?: string | null
   address?: string | null
+  billingAddress?: string | null
   notes?: string | null
   emailOptIn?: boolean
   smsOptIn?: boolean
@@ -50,8 +51,17 @@ export function CustomerForm({
           <Input id="c-email" name="email" type="email" defaultValue={defaults.email ?? ''} className="h-9" />
         </div>
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="c-address">Address</Label>
+          <Label htmlFor="c-address">Service address</Label>
           <AddressInput id="c-address" name="address" defaultValue={defaults.address ?? ''} />
+        </div>
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <Label htmlFor="c-billing">Billing address</Label>
+          <AddressInput
+            id="c-billing"
+            name="billingAddress"
+            defaultValue={defaults.billingAddress ?? ''}
+            placeholder="Leave blank if it's the same as the service address"
+          />
         </div>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <Label htmlFor="c-notes">Notes</Label>

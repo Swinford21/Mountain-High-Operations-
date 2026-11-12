@@ -2,7 +2,7 @@ import { inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { customerHistory, customerNotes, customers, jobs, messageLog, payments, type Customer } from '@/lib/db/schema'
 
-const FILLABLE = ['email', 'phone', 'address', 'company', 'defaultOperation', 'primaryOperation', 'location', 'tags'] as const
+const FILLABLE = ['email', 'phone', 'address', 'billingAddress', 'company', 'defaultOperation', 'primaryOperation', 'location', 'tags'] as const
 
 /**
  * Folds `mergeIds` into `keepId`: moves their jobs, payments, messages and service history,

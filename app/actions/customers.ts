@@ -25,6 +25,7 @@ const customerSchema = z.object({
   email: text(320).refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Email looks invalid'),
   phone: text(40),
   address: text(500),
+  billingAddress: text(500),
   notes: text(4000),
 })
 
