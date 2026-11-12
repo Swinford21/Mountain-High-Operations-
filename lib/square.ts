@@ -151,6 +151,55 @@ export async function syncSquarePayments() {
   return { upserted }
 }
 
+export type SquareOrderSummary = {
+  id: string
+  date: string
+  state: string
+  totalCents: number
+  items: { name: string; quantity: string; totalCents: number }[]
+}
+
+/** A customer's Square order history, newest first. Never throws: Square problems come back as `error`. */
+export async function getSquareOrders(
+  squareCustomerId: string,
+): Promise<{ orders: SquareOrderSummary[]; error: string | null }> {
+  if (!isSquareConfigured()) return { orders: [], error: 'Square is not connected' }
+  try {
+    const square = getSquare()
+    const { locations } = await square.locations.list()
+    const locationIds = (locations ?? []).map((l) => l.id).filter((id): id is string => !!id)
+    if (!locationIds.length) return { orders: [], error: null }
+    const res = await square.orders.search({
+      locationIds,
+      query: {
+        filter: { customerFilter: { customerIds: [squareCustomerId] } },
+        sort: { sortField: 'CREATED_AT', sortOrder: 'DESC' },
+      },
+      limit: 100,
+    })
+    const orders = (res.orders ?? [])
+      .filter((o) => o.id && o.state !== 'CANCELED')
+      .map((o) => ({
+        id: o.id!,
+        date: o.closedAt ?? o.createdAt ?? '',
+        state: o.state ?? 'UNKNOWN',
+        totalCents: Number(o.totalMoney?.amount ?? 0),
+        items: (o.lineItems ?? []).map((i) => ({
+          name: [i.name, i.variationName && i.variationName !== 'Regular' ? i.variationName : null].filter(Boolean).join(' – ') || 'Item',
+          quantity: i.quantity,
+          totalCents: Number(i.totalMoney?.amount ?? 0),
+        })),
+      }))
+    return { orders, error: null }
+  } catch (e) {
+    const status = (e as { statusCode?: number }).statusCode
+    return {
+      orders: [],
+      error: status === 401 ? 'Square rejected the access token' : 'Could not load orders from Square',
+    }
+  }
+}
+
 export async function unlinkedPaymentsCount() {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })

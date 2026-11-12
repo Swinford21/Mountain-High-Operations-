@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { DeleteCustomerButton } from '@/components/customers/delete-customer-button'
-import { StatusBadge } from '@/components/jobs/job-card'
+import { JobList, SquareOrders } from '@/components/customers/order-history'
 import { updateCustomer } from '@/app/actions/customers'
 import { db } from '@/lib/db'
 import { customers, jobs, payments } from '@/lib/db/schema'
-import { getOperation } from '@/lib/operations'
 import { requireAdmin } from '@/lib/session'
-import { formatDateShort, formatMoney, formatTimestamp } from '@/lib/time'
+import { getSquareOrders } from '@/lib/square'
+import { formatDateShort, formatMoney, formatTimestamp, todayLocal } from '@/lib/time'
 
 export const metadata = { title: 'Customer' }
 
@@ -24,10 +24,23 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   const [[customer], customerJobs, customerPayments] = await Promise.all([
     db.select().from(customers).where(eq(customers.id, customerId)).limit(1),
-    db.select().from(jobs).where(eq(jobs.customerId, customerId)).orderBy(desc(jobs.scheduledDate)).limit(50),
+    db.select().from(jobs).where(eq(jobs.customerId, customerId)).orderBy(desc(jobs.scheduledDate), desc(jobs.startTime)).limit(200),
     db.select().from(payments).where(eq(payments.customerId, customerId)).orderBy(desc(payments.paidAt)).limit(25),
   ])
   if (!customer) notFound()
+
+  const today = todayLocal()
+  const upcomingJobs = customerJobs
+    .filter((j) => j.scheduledDate >= today && j.status !== 'completed' && j.status !== 'canceled')
+    .sort((a, b) => (a.scheduledDate + a.startTime).localeCompare(b.scheduledDate + b.startTime))
+  const pastJobs = customerJobs.filter((j) => !upcomingJobs.includes(j))
+  const completedCount = customerJobs.filter((j) => j.status === 'completed').length
+  const squareOrders = customer.squareCustomerId
+    ? await getSquareOrders(customer.squareCustomerId)
+    : { orders: [], error: null }
+  const lifetimeCents =
+    customerJobs.filter((j) => j.status === 'completed').reduce((s, j) => s + (j.priceCents ?? 0), 0) +
+    squareOrders.orders.filter((o) => o.state === 'COMPLETED').reduce((s, o) => s + o.totalCents, 0)
 
   const paidTotal = customerPayments
     .filter((p) => p.status === 'COMPLETED')
@@ -49,33 +62,26 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <PageBody>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="flex flex-col gap-6">
-            <section className="flex flex-col gap-3">
-              <h2 className="font-semibold">Jobs</h2>
-              {customerJobs.length === 0 ? (
-                <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No jobs yet.</p>
-              ) : (
-                <ul className="flex flex-col divide-y rounded-xl border bg-card">
-                  {customerJobs.map((j) => {
-                    const op = getOperation(j.operation)
-                    return (
-                      <li key={j.id}>
-                        <Link href={`/jobs/${j.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40">
-                          <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: op.color }} aria-hidden="true" />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate font-medium">{j.title}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {op.singular} · {formatDateShort(j.scheduledDate)}
-                            </span>
-                          </span>
-                          <StatusBadge status={j.status} />
-                          <span className="hidden w-20 text-right text-sm tabular-nums sm:block">{formatMoney(j.priceCents)}</span>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </section>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="flex flex-col gap-1 rounded-xl border bg-card px-4 py-3">
+                <dt className="text-sm text-muted-foreground">Lifetime orders</dt>
+                <dd className="font-mono text-xl font-semibold tabular-nums">{formatMoney(lifetimeCents)}</dd>
+              </div>
+              <div className="flex flex-col gap-1 rounded-xl border bg-card px-4 py-3">
+                <dt className="text-sm text-muted-foreground">Completed jobs</dt>
+                <dd className="font-mono text-xl font-semibold tabular-nums">{completedCount}</dd>
+              </div>
+              <div className="col-span-2 flex flex-col gap-1 rounded-xl border bg-card px-4 py-3 sm:col-span-1">
+                <dt className="text-sm text-muted-foreground">Last service</dt>
+                <dd className="text-xl font-semibold">
+                  {pastJobs[0] ? `${formatDateShort(pastJobs[0].scheduledDate)}, ${pastJobs[0].scheduledDate.slice(0, 4)}` : '—'}
+                </dd>
+              </div>
+            </dl>
+
+            <JobList title="Upcoming jobs" jobs={upcomingJobs} empty="Nothing scheduled." />
+            <JobList title="Previous orders" jobs={pastJobs} empty="No previous jobs in this app yet." />
+            <SquareOrders linked={!!customer.squareCustomerId} orders={squareOrders.orders} error={squareOrders.error} />
 
             <section className="flex flex-col gap-3">
               <h2 className="font-semibold">Square payments</h2>
