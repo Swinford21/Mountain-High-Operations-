@@ -3,12 +3,12 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { OperationFilter } from '@/components/calendar/operation-filter'
-import { MonthGrid } from '@/components/calendar/month-grid'
-import { JobCard } from '@/components/jobs/job-card'
+import { DaySchedule } from '@/components/calendar/day-schedule'
+import { MonthGrid, dayTotalCents } from '@/components/calendar/month-grid'
 import { OPERATION_IDS } from '@/lib/operations'
 import { getJobsInRange } from '@/lib/queries'
 import { requireUser } from '@/lib/session'
-import { addDays, formatDateLong, todayLocal } from '@/lib/time'
+import { addDays, formatDateLong, formatMoney, todayLocal } from '@/lib/time'
 
 export const metadata = { title: 'Calendar' }
 
@@ -30,6 +30,7 @@ export default async function CalendarPage({
   searchParams: Promise<{ month?: string; ops?: string; day?: string; mine?: string }>
 }) {
   const me = await requireUser()
+  const isAdmin = me.role === 'admin'
   const sp = await searchParams
   const today = todayLocal()
   const month = sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : today.slice(0, 7)
@@ -121,25 +122,26 @@ export default async function CalendarPage({
             selectedDay={day}
             jobs={jobs}
             dayHref={(d) => buildHref({ day: d })}
+            showTotals={isAdmin}
           />
           <section aria-labelledby="day-heading" className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-3">
               <h2 id="day-heading" className="font-semibold">
                 {formatDateLong(day)}
               </h2>
               <span className="text-sm text-muted-foreground">
                 {dayJobs.length} job{dayJobs.length === 1 ? '' : 's'}
+                {isAdmin && dayJobs.length > 0 && (
+                  <>
+                    {' · '}
+                    <span className="font-mono font-semibold text-foreground tabular-nums">
+                      {formatMoney(dayTotalCents(dayJobs))}
+                    </span>
+                  </>
+                )}
               </span>
             </div>
-            {dayJobs.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Nothing scheduled.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {dayJobs.map((j) => (
-                  <JobCard key={j.id} job={j} />
-                ))}
-              </div>
-            )}
+            <DaySchedule key={day} day={day} jobs={dayJobs} isAdmin={isAdmin} />
           </section>
         </div>
       </PageBody>
