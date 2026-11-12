@@ -1,6 +1,6 @@
-import { and, asc, eq, gte, inArray, lte, ne } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { customers, jobItems, jobs, products, trucks, user } from '@/lib/db/schema'
+import { customers, jobItems, jobNotes, jobs, products, trucks, user } from '@/lib/db/schema'
 
 export async function getTrucks() {
   return db
@@ -90,6 +90,7 @@ export async function getJobsInRange(opts: {
       truckId: jobs.truckId,
       truckName: trucks.name,
       truckColor: trucks.color,
+      hasCrewNotes: sql<boolean>`exists (select 1 from ${jobNotes} n where n.job_id = ${jobs.id} and n.visibility = 'crew')`,
     })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
