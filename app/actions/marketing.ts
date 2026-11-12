@@ -61,7 +61,7 @@ export async function sendTestCampaign(_prev: ActionState, formData: FormData): 
   if (d.channel === 'sms') return { ok: false, message: 'Test sends go to your email. Switch to Email or Both to test.' }
   const origin = await siteOrigin()
   const msg = buildEmail(d.body, `[Test] ${d.subject}`, me.name, `${origin}/unsubscribe`)
-  const r = await sendEmail({ to: me.email, ...msg })
+  const r = await sendEmail({ to: me.email, ...msg, bcc: false })
   return r.ok ? { ok: true, message: `Test email sent to ${me.email}` } : { ok: false, message: r.error }
 }
 
