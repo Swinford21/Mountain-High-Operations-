@@ -49,6 +49,14 @@ export function formatTime12(hhmm: string) {
   return `${hour}:${String(m ?? 0).padStart(2, '0')} ${suffix}`
 }
 
+/** Arrival window starting at `hhmm`, e.g. "8:00 AM – 9:00 AM". */
+export function formatTimeWindow(hhmm: string, minutes = 60) {
+  const [h, m] = hhmm.split(':').map(Number)
+  const end = (h * 60 + (m || 0) + minutes) % (24 * 60)
+  const endHHMM = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
+  return `${formatTime12(hhmm)} – ${formatTime12(endHHMM)}`
+}
+
 export function formatTimestamp(ts: Date | string | null | undefined) {
   if (!ts) return '—'
   return new Date(ts).toLocaleString('en-US', {
