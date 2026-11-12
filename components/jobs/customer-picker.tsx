@@ -89,12 +89,16 @@ export function CustomerPicker({
       <input type="hidden" name="customerId" value={selected?.id ?? ''} />
       {selected ? (
         <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/40 p-3">
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 flex-col gap-1">
             <span className="font-medium">{selected.name}</span>
-            <span className="truncate text-sm text-muted-foreground">
-              {[selected.phone, selected.email].filter(Boolean).join(' · ') || 'No contact info'}
-            </span>
-            {selected.address && <span className="truncate text-sm text-muted-foreground">{selected.address}</span>}
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
+              <dt className="text-muted-foreground">Phone</dt>
+              <dd className="truncate">{selected.phone || '—'}</dd>
+              <dt className="text-muted-foreground">Email</dt>
+              <dd className="truncate">{selected.email || '—'}</dd>
+              <dt className="text-muted-foreground">Address</dt>
+              <dd className="truncate">{selected.address || 'No address on file'}</dd>
+            </dl>
           </div>
           <Button type="button" variant="ghost" size="icon-sm" onClick={() => choose(null)} aria-label="Change customer">
             <X aria-hidden="true" />
@@ -142,8 +146,9 @@ export function CustomerPicker({
                   >
                     <span className="text-sm font-medium">{c.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {[c.phone, c.address].filter(Boolean).join(' · ')}
+                      {[c.phone, c.email].filter(Boolean).join(' · ') || 'No phone or email'}
                     </span>
+                    <span className="text-xs text-muted-foreground">{c.address || 'No address on file'}</span>
                   </button>
                 </li>
               ))}
