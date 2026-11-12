@@ -13,6 +13,7 @@ import {
   Package,
   Sun,
   Timer,
+  TrendingUp,
   Users,
   UserCog,
 } from 'lucide-react'
@@ -29,6 +30,7 @@ const NAV = [
   { href: '/customers', label: 'Customers', icon: Users, admin: true },
   { href: '/products', label: 'Products', icon: Package, admin: true },
   { href: '/payments', label: 'Payments', icon: CreditCard, admin: true },
+  { href: '/sales', label: 'Sales Trends', icon: TrendingUp, admin: true },
   { href: '/marketing', label: 'Marketing', icon: Megaphone, admin: true },
   { href: '/team', label: 'Team', icon: UserCog, admin: true },
 ]

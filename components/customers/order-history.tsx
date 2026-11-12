@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { PaidMark, StatusBadge } from '@/components/jobs/job-card'
-import type { jobs } from '@/lib/db/schema'
+import type { CustomerHistory, jobs } from '@/lib/db/schema'
 import { getOperation } from '@/lib/operations'
 import type { SquareOrderSummary } from '@/lib/square'
 import { formatDateShort, formatMoney, formatTimestamp } from '@/lib/time'
@@ -35,6 +35,73 @@ export function JobList({ title, jobs, empty }: { title: string; jobs: Job[]; em
                     {formatMoney(j.priceCents)}
                   </span>
                 </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+type HistoryEntry =
+  | { kind: 'job'; date: string; job: Job }
+  | { kind: 'record'; date: string; record: CustomerHistory }
+
+/** Past jobs scheduled in this app, merged with services imported from the yearly client records. */
+export function JobHistory({ jobs, records }: { jobs: Job[]; records: CustomerHistory[] }) {
+  const entries: HistoryEntry[] = [
+    ...jobs.map((job) => ({ kind: 'job' as const, date: job.scheduledDate, job })),
+    ...records.map((record) => ({ kind: 'record' as const, date: record.serviceDate, record })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-semibold">
+        Job history <span className="font-normal text-muted-foreground">({entries.length})</span>
+      </h2>
+      {entries.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No previous jobs on record.</p>
+      ) : (
+        <ul className="flex flex-col divide-y rounded-xl border bg-card">
+          {entries.map((e) => {
+            if (e.kind === 'job') {
+              const j = e.job
+              const op = getOperation(j.operation)
+              return (
+                <li key={`job-${j.id}`}>
+                  <Link href={`/jobs/${j.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40">
+                    <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: op.color }} aria-hidden="true" />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate font-medium">{j.title}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {op.singular} · {formatDateShort(j.scheduledDate)}, {j.scheduledDate.slice(0, 4)}
+                      </span>
+                    </span>
+                    {j.paymentStatus === 'paid' && <PaidMark />}
+                    <StatusBadge status={j.status} />
+                    <span className="hidden w-20 text-right font-mono text-sm tabular-nums sm:block">
+                      {formatMoney(j.priceCents)}
+                    </span>
+                  </Link>
+                </li>
+              )
+            }
+            const r = e.record
+            const op = getOperation(r.operation)
+            return (
+              <li key={`record-${r.id}`} className="flex items-center gap-4 px-4 py-3">
+                <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: op.color }} aria-hidden="true" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-medium">
+                    {r.location && r.location !== 'Brokered' ? `${r.location} ${op.singular.toLowerCase()}` : op.singular}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatDateShort(r.serviceDate)}, {r.serviceDate.slice(0, 4)}
+                    {r.sourceLabel ? ` · from ${r.sourceLabel}` : ''}
+                  </span>
+                </span>
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">Past record</span>
               </li>
             )
           })}

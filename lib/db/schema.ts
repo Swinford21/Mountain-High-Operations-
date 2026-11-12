@@ -186,7 +186,39 @@ export const jobItems = pgTable('job_items', {
   unitPriceCents: integer('unit_price_cents').notNull().default(0),
 })
 
+/** Team-only notes on a job. Never included in customer emails or texts. */
+export const jobNotes = pgTable('job_notes', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').notNull(),
+  authorId: text('author_id').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Admin-only notes about a customer. Never shown to customers or crew. */
+export const customerNotes = pgTable('customer_notes', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  authorId: text('author_id').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Past services imported from the yearly client records spreadsheet (one row per recorded service). */
+export const customerHistory = pgTable('customer_history', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  externalId: text('external_id').notNull(),
+  serviceDate: date('service_date', { mode: 'string' }).notNull(),
+  operation: text('operation').notNull(),
+  location: text('location'),
+  sourceLabel: text('source_label'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type Customer = typeof customers.$inferSelect
+export type JobNote = typeof jobNotes.$inferSelect
+export type CustomerHistory = typeof customerHistory.$inferSelect
 export type Job = typeof jobs.$inferSelect
 export type TimeEntry = typeof timeEntries.$inferSelect
 export type Payment = typeof payments.$inferSelect

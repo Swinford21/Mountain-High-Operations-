@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { and, desc, eq, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, or } from 'drizzle-orm'
 import { Mail, MapPin, MessageSquare, Pencil, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
@@ -8,7 +8,9 @@ import { StatusBadge } from '@/components/jobs/job-card'
 import { JobStatusControl } from '@/components/jobs/job-status-control'
 import { JobAdminActions, PaymentApplyButton, PaymentToggle } from '@/components/jobs/job-admin-actions'
 import { db } from '@/lib/db'
-import { messageLog, payments } from '@/lib/db/schema'
+import { jobNotes, messageLog, payments, user } from '@/lib/db/schema'
+import { InternalNotes } from '@/components/jobs/internal-notes'
+import { addJobNote, deleteJobNote } from '@/app/actions/job-notes'
 import { getOperation } from '@/lib/operations'
 import { getJobDetail, getJobItems } from '@/lib/queries'
 import { requireUser } from '@/lib/session'
@@ -37,7 +39,24 @@ export default async function JobDetailPage({
   const endMinutes = Number(job.startTime.slice(0, 2)) * 60 + Number(job.startTime.slice(3)) + job.durationMinutes
   const endTime = `${String(Math.floor(endMinutes / 60) % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
 
-  const items = await getJobItems(job.id)
+  const [items, noteRows] = await Promise.all([
+    getJobItems(job.id),
+    isAdmin
+      ? db
+          .select({ id: jobNotes.id, body: jobNotes.body, authorName: user.name, createdAt: jobNotes.createdAt })
+          .from(jobNotes)
+          .leftJoin(user, eq(user.id, jobNotes.authorId))
+          .where(eq(jobNotes.jobId, job.id))
+          .orderBy(asc(jobNotes.createdAt))
+      : Promise.resolve([]),
+  ])
+  const internalNotes = noteRows.map((n) => ({
+    id: n.id,
+    body: n.body,
+    authorName: n.authorName,
+    createdAt: n.createdAt.toISOString(),
+    canDelete: true,
+  }))
   const [messages, customerPayments] = isAdmin
     ? await Promise.all([
         db.select().from(messageLog).where(eq(messageLog.jobId, job.id)).orderBy(desc(messageLog.createdAt)).limit(20),
@@ -137,12 +156,16 @@ export default async function JobDetailPage({
                 </div>
                 {job.description && (
                   <div className="flex flex-col gap-1 sm:col-span-2">
-                    <dt className="text-muted-foreground">Notes</dt>
+                    <dt className="text-muted-foreground">Notes (shared with customer)</dt>
                     <dd className="leading-relaxed whitespace-pre-wrap">{job.description}</dd>
                   </div>
                 )}
               </dl>
             </section>
+
+            {isAdmin && (
+              <InternalNotes targetId={job.id} notes={internalNotes} addAction={addJobNote} deleteAction={deleteJobNote} />
+            )}
 
             {items.length > 0 && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">

@@ -68,6 +68,9 @@ export default async function CustomersPage({
           <>
             <SquareSyncButton />
             <ImportDialog />
+            <Button variant="outline" render={<Link href="/customers/duplicates" />} nativeButton={false}>
+              Duplicates
+            </Button>
             <Button render={<Link href="/customers/new" />} nativeButton={false}>
               <Plus aria-hidden="true" />
               Add customer

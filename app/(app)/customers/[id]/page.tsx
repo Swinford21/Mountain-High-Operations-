@@ -1,15 +1,17 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { desc, eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { DeleteCustomerButton } from '@/components/customers/delete-customer-button'
-import { JobList, SquareOrders } from '@/components/customers/order-history'
+import { JobHistory, JobList, SquareOrders } from '@/components/customers/order-history'
+import { InternalNotes } from '@/components/jobs/internal-notes'
 import { updateCustomer } from '@/app/actions/customers'
+import { addCustomerNote, deleteCustomerNote } from '@/app/actions/customer-notes'
 import { db } from '@/lib/db'
-import { customers, jobs, payments } from '@/lib/db/schema'
+import { customerHistory, customerNotes, customers, jobs, payments, user } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/session'
 import { getSquareOrders } from '@/lib/square'
 import { formatDateShort, formatMoney, formatTimestamp, todayLocal } from '@/lib/time'
@@ -22,19 +24,31 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const customerId = Number(id)
   if (!Number.isInteger(customerId)) notFound()
 
-  const [[customer], customerJobs, customerPayments] = await Promise.all([
+  const [[customer], customerJobs, customerPayments, historyRecords, noteRows] = await Promise.all([
     db.select().from(customers).where(eq(customers.id, customerId)).limit(1),
     db.select().from(jobs).where(eq(jobs.customerId, customerId)).orderBy(desc(jobs.scheduledDate), desc(jobs.startTime)).limit(200),
     db.select().from(payments).where(eq(payments.customerId, customerId)).orderBy(desc(payments.paidAt)).limit(25),
+    db.select().from(customerHistory).where(eq(customerHistory.customerId, customerId)).orderBy(desc(customerHistory.serviceDate)).limit(200),
+    db
+      .select({ id: customerNotes.id, body: customerNotes.body, authorName: user.name, createdAt: customerNotes.createdAt })
+      .from(customerNotes)
+      .leftJoin(user, eq(user.id, customerNotes.authorId))
+      .where(eq(customerNotes.customerId, customerId))
+      .orderBy(asc(customerNotes.createdAt)),
   ])
   if (!customer) notFound()
+  const internalNotes = noteRows.map((n) => ({ ...n, createdAt: n.createdAt.toISOString(), canDelete: true }))
 
   const today = todayLocal()
   const upcomingJobs = customerJobs
     .filter((j) => j.scheduledDate >= today && j.status !== 'completed' && j.status !== 'canceled')
     .sort((a, b) => (a.scheduledDate + a.startTime).localeCompare(b.scheduledDate + b.startTime))
   const pastJobs = customerJobs.filter((j) => !upcomingJobs.includes(j))
-  const completedCount = customerJobs.filter((j) => j.status === 'completed').length
+  const completedCount = customerJobs.filter((j) => j.status === 'completed').length + historyRecords.length
+  const lastServiceDate = [pastJobs[0]?.scheduledDate, historyRecords[0]?.serviceDate]
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1)
   const squareOrders = customer.squareCustomerId
     ? await getSquareOrders(customer.squareCustomerId)
     : { orders: [], error: null }
@@ -74,13 +88,13 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="col-span-2 flex flex-col gap-1 rounded-xl border bg-card px-4 py-3 sm:col-span-1">
                 <dt className="text-sm text-muted-foreground">Last service</dt>
                 <dd className="text-xl font-semibold">
-                  {pastJobs[0] ? `${formatDateShort(pastJobs[0].scheduledDate)}, ${pastJobs[0].scheduledDate.slice(0, 4)}` : '—'}
+                  {lastServiceDate ? `${formatDateShort(lastServiceDate)}, ${lastServiceDate.slice(0, 4)}` : '—'}
                 </dd>
               </div>
             </dl>
 
             <JobList title="Upcoming jobs" jobs={upcomingJobs} empty="Nothing scheduled." />
-            <JobList title="Previous orders" jobs={pastJobs} empty="No previous jobs in this app yet." />
+            <JobHistory jobs={pastJobs} records={historyRecords} />
             <SquareOrders linked={!!customer.squareCustomerId} orders={squareOrders.orders} error={squareOrders.error} />
 
             <section className="flex flex-col gap-3">
@@ -113,6 +127,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </div>
 
           <aside className="flex flex-col gap-6">
+            <InternalNotes
+              targetId={customer.id}
+              notes={internalNotes}
+              addAction={addCustomerNote}
+              deleteAction={deleteCustomerNote}
+            />
             {(customer.location || customer.defaultOperation || customer.company || customer.tags || customer.customerSince) && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
                 <h2 className="font-semibold">Profile</h2>
