@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { OperationFilter } from '@/components/calendar/operation-filter'
 import { DaySchedule } from '@/components/calendar/day-schedule'
+import { SalesTotals } from '@/components/calendar/sales-totals'
 import { MonthGrid, dayTotalCents } from '@/components/calendar/month-grid'
 import { OPERATION_IDS } from '@/lib/operations'
 import { getJobsInRange } from '@/lib/queries'
@@ -48,6 +49,7 @@ export default async function CalendarPage({
     assignedTo: mine ? me.id : undefined,
   })
   const dayJobs = jobs.filter((j) => j.scheduledDate === day)
+  const weekStart = addDays(day, -new Date(`${day}T12:00:00Z`).getUTCDay())
 
   const buildHref = (overrides: Partial<{ month: string; ops: string[]; day: string; mine: boolean }>) => {
     const params = new URLSearchParams()
@@ -112,6 +114,10 @@ export default async function CalendarPage({
             </Button>
           </div>
         </div>
+
+        {isAdmin && (
+          <SalesTotals jobs={jobs} month={month} monthLabel={label} weekStart={weekStart} weekEnd={addDays(weekStart, 6)} />
+        )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <MonthGrid

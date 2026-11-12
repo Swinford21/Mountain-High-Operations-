@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { customers, jobItems, jobs } from '@/lib/db/schema'
 import { getOperation } from '@/lib/operations'
 import { BUSINESS_NAME, BUSINESS_PHONE, emailLayout, isValidEmail, logMessage, sendEmail, sendSms } from '@/lib/notify'
-import { addDays, formatDateLong, formatTime12, zonedNow } from '@/lib/time'
+import { addDays, formatDateLong, formatTimeWindow, zonedNow } from '@/lib/time'
 
 type Kind = 'confirmation' | 'reminder'
 
@@ -23,21 +23,21 @@ function firstName(name: string) {
 
 function buildMessages(kind: Kind, job: typeof jobs.$inferSelect, customer: typeof customers.$inferSelect) {
   const op = getOperation(job.operation)
-  const when = `${formatDateLong(job.scheduledDate)} at ${formatTime12(job.startTime)}`
+  const date = formatDateLong(job.scheduledDate)
   const name = firstName(customer.name)
   const address = job.address || customer.address || ''
 
   if (kind === 'confirmation') {
     return {
-      subject: `Your ${op.singular.toLowerCase()} is scheduled for ${formatDateLong(job.scheduledDate)}`,
-      sms: `Hi ${name}, this is ${BUSINESS_NAME}. Your ${op.singular.toLowerCase()} is confirmed for ${when}${address ? ` at ${address}` : ''}. Questions? Call ${BUSINESS_PHONE}.`,
+      subject: `Your ${op.singular.toLowerCase()} is scheduled for ${date}`,
+      sms: `Hi ${name}, this is ${BUSINESS_NAME}. Your ${op.singular.toLowerCase()} is confirmed for ${date}${address ? ` at ${address}` : ''}. We'll text you the day before with your arrival window. Questions? Call ${BUSINESS_PHONE}.`,
       heading: `You're on the schedule, ${name}`,
       intro: `Thanks for choosing ${BUSINESS_NAME}. Here are the details for your upcoming ${op.singular.toLowerCase()}.`,
     }
   }
   return {
     subject: `Reminder: your ${op.singular.toLowerCase()} is tomorrow`,
-    sms: `Reminder from ${BUSINESS_NAME}: your ${op.singular.toLowerCase()} is tomorrow, ${when}${address ? ` at ${address}` : ''}. Please make sure we have clear access. Need to reschedule? Call ${BUSINESS_PHONE}.`,
+    sms: `Reminder from ${BUSINESS_NAME}: your ${op.singular.toLowerCase()} is tomorrow, ${date}, with an arrival window of ${formatTimeWindow(job.startTime)}${address ? ` at ${address}` : ''}. Please make sure we have clear access. Need to reschedule? Call ${BUSINESS_PHONE}.`,
     heading: `See you tomorrow, ${name}`,
     intro: `Just a reminder that your ${op.singular.toLowerCase()} with ${BUSINESS_NAME} is scheduled for tomorrow. Please make sure gates are unlocked and the work area is accessible.`,
   }
@@ -59,8 +59,8 @@ export async function sendJobMessage(jobId: number, kind: Kind) {
     const rows: [string, string][] = [
       ['Service', op.singular],
       ['Date', formatDateLong(job.scheduledDate)],
-      ['Time', formatTime12(job.startTime)],
     ]
+    if (kind === 'reminder') rows.push(['Arrival window', formatTimeWindow(job.startTime)])
     const address = job.address || customer.address
     if (address) rows.push(['Address', address])
     const items = await db.select().from(jobItems).where(eq(jobItems.jobId, jobId))
