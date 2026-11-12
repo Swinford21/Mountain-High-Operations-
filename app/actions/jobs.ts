@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { customers, jobItems, jobs, payments } from '@/lib/db/schema'
+import { customers, jobItems, jobNotes, jobs, payments } from '@/lib/db/schema'
 import { sendJobMessage, sendTomorrowReminders } from '@/lib/job-notifications'
 import { JOB_STATUSES, OPERATION_IDS } from '@/lib/operations'
 import { requireAdmin, requireUser } from '@/lib/session'
@@ -24,6 +24,9 @@ const jobSchema = z.object({
   newCustomerName: optionalText,
   newCustomerEmail: optionalText,
   newCustomerPhone: optionalText,
+  newCustomerBillingAddress: optionalText,
+  crewNote: z.string().trim().max(4000, 'Keep crew notes under 4,000 characters').optional(),
+  adminNote: z.string().trim().max(4000, 'Keep admin notes under 4,000 characters').optional(),
   operation: z.enum(OPERATION_IDS),
   title: z.string().trim().min(1, 'Add a short job title').max(200),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date'),
@@ -99,6 +102,7 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
         email: data.newCustomerEmail,
         phone: data.newCustomerPhone,
         address: data.address,
+        billingAddress: data.newCustomerBillingAddress,
       })
       .returning({ id: customers.id })
     customerId = created.id
@@ -122,6 +126,11 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
     })
     .returning({ id: jobs.id })
   await saveItems(job.id, parseItems(formData))
+  const notes = [
+    data.crewNote && { jobId: job.id, authorId: admin.id, body: data.crewNote, visibility: 'crew' },
+    data.adminNote && { jobId: job.id, authorId: admin.id, body: data.adminNote, visibility: 'admin' },
+  ].filter((n) => !!n)
+  if (notes.length) await db.insert(jobNotes).values(notes)
 
   let sent = -1
   if (data.notifyCustomer === 'on') {

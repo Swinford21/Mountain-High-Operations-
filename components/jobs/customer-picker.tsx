@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, useTransition } from 'react'
 import { Plus, Search, X } from 'lucide-react'
+import { AddressInput } from '@/components/address-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -77,6 +78,15 @@ export function CustomerPicker({
           <div className="flex flex-col gap-2">
             <Label htmlFor="newCustomerEmail">Email</Label>
             <Input id="newCustomerEmail" name="newCustomerEmail" type="email" autoComplete="off" />
+          </div>
+          <div className="flex flex-col gap-2 sm:col-span-3">
+            <Label htmlFor="newCustomerBillingAddress">Billing address</Label>
+            <AddressInput
+              id="newCustomerBillingAddress"
+              name="newCustomerBillingAddress"
+              defaultValue=""
+              placeholder="Leave blank if it's the same as the job address"
+            />
           </div>
         </div>
       </fieldset>

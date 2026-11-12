@@ -64,6 +64,7 @@ export const customers = pgTable('customers', {
   email: text('email'),
   phone: text('phone'),
   address: text('address'),
+  billingAddress: text('billing_address'),
   notes: text('notes'),
   squareCustomerId: text('square_customer_id').unique(),
   externalId: text('external_id').unique(),

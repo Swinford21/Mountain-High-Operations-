@@ -133,7 +133,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               addAction={addCustomerNote}
               deleteAction={deleteCustomerNote}
             />
-            {(customer.location || customer.defaultOperation || customer.company || customer.tags || customer.customerSince) && (
+            {(customer.location ||
+              customer.defaultOperation ||
+              customer.company ||
+              customer.tags ||
+              customer.customerSince ||
+              customer.billingAddress) && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
                 <h2 className="font-semibold">Profile</h2>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
@@ -141,6 +146,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     <>
                       <dt className="text-muted-foreground">Company</dt>
                       <dd>{customer.company}</dd>
+                    </>
+                  )}
+                  {customer.billingAddress && (
+                    <>
+                      <dt className="text-muted-foreground">Billing address</dt>
+                      <dd>{customer.billingAddress}</dd>
                     </>
                   )}
                   {customer.defaultOperation && (
