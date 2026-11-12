@@ -5,7 +5,7 @@ import { Lock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { addJobNote, deleteJobNote } from '@/app/actions/job-notes'
+import type { ActionState } from '@/app/actions/jobs'
 
 export type InternalNote = {
   id: number
@@ -15,8 +15,18 @@ export type InternalNote = {
   canDelete: boolean
 }
 
-export function InternalNotes({ jobId, notes }: { jobId: number; notes: InternalNote[] }) {
-  const [state, formAction, pending] = useActionState(addJobNote, null)
+export function InternalNotes({
+  targetId,
+  notes,
+  addAction,
+  deleteAction,
+}: {
+  targetId: number
+  notes: InternalNote[]
+  addAction: (prev: ActionState, formData: FormData) => Promise<ActionState>
+  deleteAction: (noteId: number) => Promise<ActionState>
+}) {
+  const [state, formAction, pending] = useActionState(addAction, null)
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
@@ -33,20 +43,20 @@ export function InternalNotes({ jobId, notes }: { jobId: number; notes: Internal
           Internal notes
         </h2>
         <p className="text-sm text-muted-foreground">
-          Team only. These are never included in customer emails or texts.
+          Admins only. Customers and crew never see these, and they are never included in emails or texts.
         </p>
       </div>
 
       {notes.length > 0 && (
         <ul className="flex flex-col divide-y rounded-lg border text-sm">
           {notes.map((n) => (
-            <NoteItem key={n.id} note={n} />
+            <NoteItem key={n.id} note={n} deleteAction={deleteAction} />
           ))}
         </ul>
       )}
 
       <form ref={formRef} action={formAction} className="flex flex-col gap-2">
-        <input type="hidden" name="jobId" value={jobId} />
+        <input type="hidden" name="targetId" value={targetId} />
         <label htmlFor="internal-note" className="sr-only">
           Add an internal note
         </label>
@@ -74,7 +84,7 @@ export function InternalNotes({ jobId, notes }: { jobId: number; notes: Internal
   )
 }
 
-function NoteItem({ note }: { note: InternalNote }) {
+function NoteItem({ note, deleteAction }: { note: InternalNote; deleteAction: (noteId: number) => Promise<ActionState> }) {
   const [pending, startTransition] = useTransition()
   return (
     <li className="flex flex-col gap-1 px-3 py-3">
@@ -98,7 +108,7 @@ function NoteItem({ note }: { note: InternalNote }) {
               aria-label="Delete note"
               onClick={() =>
                 startTransition(async () => {
-                  const r = await deleteJobNote(note.id)
+                  const r = await deleteAction(note.id)
                   if (r && !r.ok) toast.error(r.message)
                 })
               }

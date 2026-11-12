@@ -195,6 +195,15 @@ export const jobNotes = pgTable('job_notes', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/** Admin-only notes about a customer. Never shown to customers or crew. */
+export const customerNotes = pgTable('customer_notes', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  authorId: text('author_id').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 /** Past services imported from the yearly client records spreadsheet (one row per recorded service). */
 export const customerHistory = pgTable('customer_history', {
   id: serial('id').primaryKey(),

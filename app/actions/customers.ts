@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { customers, jobs } from '@/lib/db/schema'
+import { mergeCustomers } from '@/lib/customer-merge'
 import { toE164 } from '@/lib/notify'
 import { isSquareConfigured, syncSquareCustomers, syncSquarePayments } from '@/lib/square'
 import { requireAdmin } from '@/lib/session'
@@ -133,6 +134,21 @@ export async function searchCustomers(query: string) {
     .where(or(...conditions))
     .orderBy(asc(customers.name))
     .limit(10)
+}
+
+const mergeInput = z.object({
+  keepId: z.number().int().positive(),
+  mergeIds: z.array(z.number().int().positive()).min(1).max(20),
+})
+
+export async function mergeDuplicateCustomers(keepId: number, mergeIds: number[]): Promise<ActionState> {
+  await requireAdmin()
+  const parsed = mergeInput.safeParse({ keepId, mergeIds })
+  if (!parsed.success) return { ok: false, message: 'Pick a record to keep and at least one to merge' }
+  const { merged } = await mergeCustomers(parsed.data.keepId, parsed.data.mergeIds)
+  if (merged === 0) return { ok: false, message: 'Nothing to merge. The records may already be merged.' }
+  revalidatePath('/customers', 'layout')
+  return { ok: true, message: `Merged ${merged} record${merged === 1 ? '' : 's'}` }
 }
 
 export async function syncSquare(): Promise<ActionState> {

@@ -1,15 +1,17 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { desc, eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { DeleteCustomerButton } from '@/components/customers/delete-customer-button'
 import { JobHistory, JobList, SquareOrders } from '@/components/customers/order-history'
+import { InternalNotes } from '@/components/jobs/internal-notes'
 import { updateCustomer } from '@/app/actions/customers'
+import { addCustomerNote, deleteCustomerNote } from '@/app/actions/customer-notes'
 import { db } from '@/lib/db'
-import { customerHistory, customers, jobs, payments } from '@/lib/db/schema'
+import { customerHistory, customerNotes, customers, jobs, payments, user } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/session'
 import { getSquareOrders } from '@/lib/square'
 import { formatDateShort, formatMoney, formatTimestamp, todayLocal } from '@/lib/time'
@@ -22,13 +24,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const customerId = Number(id)
   if (!Number.isInteger(customerId)) notFound()
 
-  const [[customer], customerJobs, customerPayments, historyRecords] = await Promise.all([
+  const [[customer], customerJobs, customerPayments, historyRecords, noteRows] = await Promise.all([
     db.select().from(customers).where(eq(customers.id, customerId)).limit(1),
     db.select().from(jobs).where(eq(jobs.customerId, customerId)).orderBy(desc(jobs.scheduledDate), desc(jobs.startTime)).limit(200),
     db.select().from(payments).where(eq(payments.customerId, customerId)).orderBy(desc(payments.paidAt)).limit(25),
     db.select().from(customerHistory).where(eq(customerHistory.customerId, customerId)).orderBy(desc(customerHistory.serviceDate)).limit(200),
+    db
+      .select({ id: customerNotes.id, body: customerNotes.body, authorName: user.name, createdAt: customerNotes.createdAt })
+      .from(customerNotes)
+      .leftJoin(user, eq(user.id, customerNotes.authorId))
+      .where(eq(customerNotes.customerId, customerId))
+      .orderBy(asc(customerNotes.createdAt)),
   ])
   if (!customer) notFound()
+  const internalNotes = noteRows.map((n) => ({ ...n, createdAt: n.createdAt.toISOString(), canDelete: true }))
 
   const today = todayLocal()
   const upcomingJobs = customerJobs
@@ -118,6 +127,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </div>
 
           <aside className="flex flex-col gap-6">
+            <InternalNotes
+              targetId={customer.id}
+              notes={internalNotes}
+              addAction={addCustomerNote}
+              deleteAction={deleteCustomerNote}
+            />
             {(customer.location || customer.defaultOperation || customer.company || customer.tags || customer.customerSince) && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
                 <h2 className="font-semibold">Profile</h2>

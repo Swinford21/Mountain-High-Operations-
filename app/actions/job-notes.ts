@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { jobNotes, jobs } from '@/lib/db/schema'
-import { requireUser } from '@/lib/session'
+import { requireAdmin } from '@/lib/session'
 import type { ActionState } from '@/app/actions/jobs'
 
 const noteSchema = z.object({
@@ -14,8 +14,8 @@ const noteSchema = z.object({
 })
 
 export async function addJobNote(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireUser()
-  const parsed = noteSchema.safeParse({ jobId: formData.get('jobId'), body: formData.get('body') })
+  const me = await requireAdmin()
+  const parsed = noteSchema.safeParse({ jobId: formData.get('targetId'), body: formData.get('body') })
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check the note' }
   const [job] = await db.select({ id: jobs.id }).from(jobs).where(eq(jobs.id, parsed.data.jobId)).limit(1)
   if (!job) return { ok: false, message: 'Job not found' }
@@ -25,12 +25,10 @@ export async function addJobNote(_prev: ActionState, formData: FormData): Promis
 }
 
 export async function deleteJobNote(noteId: number): Promise<ActionState> {
-  const me = await requireUser()
+  await requireAdmin()
   if (!Number.isInteger(noteId)) return { ok: false, message: 'Invalid note' }
-  const [note] = await db.select().from(jobNotes).where(eq(jobNotes.id, noteId)).limit(1)
+  const [note] = await db.delete(jobNotes).where(eq(jobNotes.id, noteId)).returning()
   if (!note) return { ok: false, message: 'Note not found' }
-  if (note.authorId !== me.id && me.role !== 'admin') return { ok: false, message: 'You can only delete your own notes' }
-  await db.delete(jobNotes).where(eq(jobNotes.id, noteId))
   revalidatePath(`/jobs/${note.jobId}`)
   return { ok: true, message: 'Note deleted' }
 }

@@ -10,6 +10,7 @@ import { JobAdminActions, PaymentApplyButton, PaymentToggle } from '@/components
 import { db } from '@/lib/db'
 import { jobNotes, messageLog, payments, user } from '@/lib/db/schema'
 import { InternalNotes } from '@/components/jobs/internal-notes'
+import { addJobNote, deleteJobNote } from '@/app/actions/job-notes'
 import { getOperation } from '@/lib/operations'
 import { getJobDetail, getJobItems } from '@/lib/queries'
 import { requireUser } from '@/lib/session'
@@ -40,19 +41,21 @@ export default async function JobDetailPage({
 
   const [items, noteRows] = await Promise.all([
     getJobItems(job.id),
-    db
-      .select({ id: jobNotes.id, body: jobNotes.body, authorId: jobNotes.authorId, authorName: user.name, createdAt: jobNotes.createdAt })
-      .from(jobNotes)
-      .leftJoin(user, eq(user.id, jobNotes.authorId))
-      .where(eq(jobNotes.jobId, job.id))
-      .orderBy(asc(jobNotes.createdAt)),
+    isAdmin
+      ? db
+          .select({ id: jobNotes.id, body: jobNotes.body, authorName: user.name, createdAt: jobNotes.createdAt })
+          .from(jobNotes)
+          .leftJoin(user, eq(user.id, jobNotes.authorId))
+          .where(eq(jobNotes.jobId, job.id))
+          .orderBy(asc(jobNotes.createdAt))
+      : Promise.resolve([]),
   ])
   const internalNotes = noteRows.map((n) => ({
     id: n.id,
     body: n.body,
     authorName: n.authorName,
     createdAt: n.createdAt.toISOString(),
-    canDelete: isAdmin || n.authorId === me.id,
+    canDelete: true,
   }))
   const [messages, customerPayments] = isAdmin
     ? await Promise.all([
@@ -160,7 +163,9 @@ export default async function JobDetailPage({
               </dl>
             </section>
 
-            <InternalNotes jobId={job.id} notes={internalNotes} />
+            {isAdmin && (
+              <InternalNotes targetId={job.id} notes={internalNotes} addAction={addJobNote} deleteAction={deleteJobNote} />
+            )}
 
             {items.length > 0 && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
