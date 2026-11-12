@@ -172,6 +172,32 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
   redirect(`/jobs/${jobId}?updated=1${sent >= 0 ? `&sent=${sent}` : ''}`)
 }
 
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+
+export async function rescheduleJobTime(jobId: number, startTime: string, notifyCustomer: boolean): Promise<ActionState> {
+  await requireAdmin()
+  if (!Number.isInteger(jobId) || jobId <= 0) return { ok: false, message: 'Job not found' }
+  const parsed = timeSchema.safeParse(startTime)
+  if (!parsed.success) return { ok: false, message: 'Pick a valid time' }
+
+  const [updated] = await db
+    .update(jobs)
+    // A new time needs a fresh day-before reminder.
+    .set({ startTime: parsed.data, reminderSentAt: null, updatedAt: new Date() })
+    .where(eq(jobs.id, jobId))
+    .returning({ id: jobs.id })
+  if (!updated) return { ok: false, message: 'Job not found' }
+
+  let note = ''
+  if (notifyCustomer === true) {
+    const result = await sendJobMessage(jobId, 'confirmation')
+    note = result.sent > 0 ? ' and customer notified' : ' (customer could not be notified)'
+  }
+
+  revalidatePath('/', 'layout')
+  return { ok: true, message: `Time changed${note}` }
+}
+
 const statusSchema = z.enum(JOB_STATUSES.map((s) => s.id) as [string, ...string[]])
 
 export async function updateJobStatus(jobId: number, status: string): Promise<ActionState> {

@@ -7,6 +7,14 @@ import { cn } from '@/lib/utils'
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MAX_CHIPS = 3
 
+export function dayTotalCents(jobs: JobListItem[]) {
+  return jobs.reduce((sum, j) => sum + (j.priceCents ?? 0), 0)
+}
+
+export function formatWholeDollars(cents: number) {
+  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+}
+
 export function MonthGrid({
   gridStart,
   gridEnd,
@@ -15,6 +23,7 @@ export function MonthGrid({
   selectedDay,
   jobs,
   dayHref,
+  showTotals = false,
 }: {
   gridStart: string
   gridEnd: string
@@ -23,6 +32,7 @@ export function MonthGrid({
   selectedDay: string
   jobs: JobListItem[]
   dayHref: (day: string) => string
+  showTotals?: boolean
 }) {
   const days: string[] = []
   for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) days.push(d)
@@ -63,13 +73,21 @@ export function MonthGrid({
                 isSelected && 'bg-accent/20 ring-2 ring-foreground ring-inset',
               )}
             >
-              <span
-                className={cn(
-                  'flex size-6 items-center justify-center rounded-full font-mono text-xs tabular-nums',
-                  isToday && 'bg-primary font-semibold text-primary-foreground',
+              <span className="flex items-center justify-between gap-1">
+                <span
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-xs tabular-nums',
+                    isToday && 'bg-primary font-semibold text-primary-foreground',
+                  )}
+                >
+                  {Number(d.slice(8))}
+                </span>
+                {showTotals && dayJobs.length > 0 && (
+                  <span className="hidden truncate font-mono text-xs font-semibold tabular-nums sm:inline">
+                    <span className="sr-only">Sales total </span>
+                    {formatWholeDollars(dayTotalCents(dayJobs))}
+                  </span>
                 )}
-              >
-                {Number(d.slice(8))}
               </span>
 
               {/* Compact dots on phones, labeled chips on larger screens */}
