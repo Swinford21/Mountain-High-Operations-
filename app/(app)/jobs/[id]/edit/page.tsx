@@ -12,15 +12,15 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const jobId = Number(id)
   if (!Number.isInteger(jobId)) notFound()
-  const [detail, customers, team, products, items] = await Promise.all([
+  const [detail, team, products, items] = await Promise.all([
     getJobDetail(jobId),
-    getCustomerOptions(),
     getTeamMembers(),
     getProductOptions(),
     getJobItems(jobId),
   ])
   if (!detail) notFound()
   const { job } = detail
+  const customers = await getCustomerOptions(job.customerId)
 
   return (
     <>

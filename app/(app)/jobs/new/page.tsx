@@ -15,9 +15,13 @@ export default async function NewJobPage({
 }) {
   await requireAdmin()
   const sp = await searchParams
-  const [customers, team, products] = await Promise.all([getCustomerOptions(), getTeamMembers(), getProductOptions()])
   const customerId = sp.customer ? Number(sp.customer) : undefined
-  const customer = customers.find((c) => c.id === customerId)
+  const [customers, team, products] = await Promise.all([
+    getCustomerOptions(customerId),
+    getTeamMembers(),
+    getProductOptions(),
+  ])
+  const customer = customers[0]
 
   return (
     <>

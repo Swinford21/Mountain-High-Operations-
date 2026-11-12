@@ -1,6 +1,6 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { asc, eq, ilike, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -104,6 +104,35 @@ export async function importCustomers(rows: unknown[]): Promise<ActionState & { 
   if (toInsert.length) await db.insert(customers).values(toInsert)
   revalidatePath('/customers')
   return { ok: true, message: `Imported ${toInsert.length}, skipped ${skipped}`, created: toInsert.length, skipped }
+}
+
+export async function searchCustomers(query: string) {
+  await requireAdmin()
+  const q = String(query ?? '').trim().slice(0, 100)
+  if (q.length < 2) return []
+  const pattern = `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
+  const digits = q.replace(/\D/g, '')
+  const conditions = [
+    ilike(customers.name, pattern),
+    ilike(customers.email, pattern),
+    ilike(customers.address, pattern),
+    ilike(customers.company, pattern),
+  ]
+  if (digits.length >= 3) {
+    conditions.push(sql`regexp_replace(coalesce(${customers.phone}, ''), '\\D', '', 'g') like ${`%${digits}%`}`)
+  }
+  return db
+    .select({
+      id: customers.id,
+      name: customers.name,
+      email: customers.email,
+      phone: customers.phone,
+      address: customers.address,
+    })
+    .from(customers)
+    .where(or(...conditions))
+    .orderBy(asc(customers.name))
+    .limit(10)
 }
 
 export async function syncSquare(): Promise<ActionState> {

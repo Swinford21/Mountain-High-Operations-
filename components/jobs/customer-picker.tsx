@@ -1,10 +1,11 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useId, useRef, useState, useTransition } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { searchCustomers } from '@/app/actions/customers'
 import type { CustomerOption } from '@/lib/queries'
 
 export function CustomerPicker({
@@ -20,31 +21,38 @@ export function CustomerPicker({
 }) {
   const listId = useId()
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState<number | undefined>(defaultCustomerId)
+  const [selected, setSelected] = useState<CustomerOption | null>(
+    customers.find((c) => c.id === defaultCustomerId) ?? null,
+  )
   const [creating, setCreating] = useState(false)
   const [open, setOpen] = useState(false)
+  const [matches, setMatches] = useState<CustomerOption[]>([])
+  const [searching, startSearch] = useTransition()
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latest = useRef('')
 
-  const selected = customers.find((c) => c.id === selectedId) ?? null
-
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return customers.slice(0, 8)
-    const digits = q.replace(/\D/g, '')
-    return customers
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.email?.toLowerCase().includes(q) ||
-          (digits.length >= 3 && c.phone?.replace(/\D/g, '').includes(digits)) ||
-          c.address?.toLowerCase().includes(q),
-      )
-      .slice(0, 8)
-  }, [customers, query])
+  function onQueryChange(value: string) {
+    setQuery(value)
+    setOpen(true)
+    latest.current = value
+    if (debounce.current) clearTimeout(debounce.current)
+    if (value.trim().length < 2) {
+      setMatches([])
+      return
+    }
+    debounce.current = setTimeout(() => {
+      startSearch(async () => {
+        const results = await searchCustomers(value)
+        if (latest.current === value) setMatches(results)
+      })
+    }, 200)
+  }
 
   function choose(c: CustomerOption | null) {
-    setSelectedId(c?.id)
+    setSelected(c)
     setOpen(false)
     setQuery('')
+    setMatches([])
     onSelect?.(c)
   }
 
@@ -108,20 +116,22 @@ export function CustomerPicker({
             className="h-9 pl-9"
             value={query}
             autoComplete="off"
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setOpen(true)
-            }}
+            onChange={(e) => onQueryChange(e.target.value)}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
           />
-          {open && (
+          {open && query.trim().length >= 2 && (
             <ul
               id={listId}
               role="listbox"
+              aria-busy={searching}
               className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border bg-popover p-1 shadow-md"
             >
-              {matches.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">No matching customers</li>}
+              {matches.length === 0 && (
+                <li className="px-3 py-2 text-sm text-muted-foreground">
+                  {searching ? 'Searching…' : 'No matching customers'}
+                </li>
+              )}
               {matches.map((c) => (
                 <li key={c.id} role="option" aria-selected={false}>
                   <button

@@ -107,6 +107,44 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </div>
 
           <aside className="flex flex-col gap-6">
+            {(customer.location || customer.defaultOperation || customer.company || customer.tags || customer.customerSince) && (
+              <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
+                <h2 className="font-semibold">Profile</h2>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                  {customer.company && (
+                    <>
+                      <dt className="text-muted-foreground">Company</dt>
+                      <dd>{customer.company}</dd>
+                    </>
+                  )}
+                  {customer.defaultOperation && (
+                    <>
+                      <dt className="text-muted-foreground">Usual service</dt>
+                      <dd className="capitalize">{customer.defaultOperation.toLowerCase()}</dd>
+                    </>
+                  )}
+                  {customer.location && (
+                    <>
+                      <dt className="text-muted-foreground">Yard</dt>
+                      <dd>{customer.location}</dd>
+                    </>
+                  )}
+                  {customer.tags && (
+                    <>
+                      <dt className="text-muted-foreground">Tags</dt>
+                      <dd>{customer.tags}</dd>
+                    </>
+                  )}
+                  {customer.customerSince && (
+                    <>
+                      <dt className="text-muted-foreground">Customer since</dt>
+                      <dd>{formatDateShort(customer.customerSince)}, {customer.customerSince.slice(0, 4)}</dd>
+                    </>
+                  )}
+                </dl>
+              </section>
+            )}
+
             <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
               <h2 className="font-semibold">Contact details</h2>
               <CustomerForm

@@ -10,7 +10,9 @@ export async function getTeamMembers() {
     .orderBy(asc(user.name))
 }
 
-export async function getCustomerOptions() {
+/** Returns the picker option for one customer (the picker searches the rest on demand). */
+export async function getCustomerOptions(id?: number) {
+  if (!id || !Number.isInteger(id)) return []
   return db
     .select({
       id: customers.id,
@@ -20,7 +22,8 @@ export async function getCustomerOptions() {
       address: customers.address,
     })
     .from(customers)
-    .orderBy(asc(customers.name))
+    .where(eq(customers.id, id))
+    .limit(1)
 }
 
 export async function getProductOptions() {

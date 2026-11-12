@@ -9,6 +9,7 @@ import { ImportDialog } from '@/components/customers/import-dialog'
 import { SquareSyncButton } from '@/components/customers/square-sync-button'
 import { db } from '@/lib/db'
 import { customers } from '@/lib/db/schema'
+import { getOperation } from '@/lib/operations'
 import { requireAdmin } from '@/lib/session'
 
 export const metadata = { title: 'Customers' }
@@ -43,6 +44,8 @@ export default async function CustomersPage({
         phone: customers.phone,
         address: customers.address,
         squareCustomerId: customers.squareCustomerId,
+        location: customers.location,
+        primaryOperation: customers.primaryOperation,
         jobCount: sql<number>`(select count(*)::int from jobs j where j.customer_id = ${customers.id})`,
       })
       .from(customers)
@@ -108,6 +111,7 @@ export default async function CustomersPage({
                   <th scope="col" className="px-4 py-2.5 font-medium">Phone</th>
                   <th scope="col" className="hidden px-4 py-2.5 font-medium md:table-cell">Email</th>
                   <th scope="col" className="hidden px-4 py-2.5 font-medium lg:table-cell">Address</th>
+                  <th scope="col" className="hidden px-4 py-2.5 font-medium sm:table-cell">Usually</th>
                   <th scope="col" className="px-4 py-2.5 text-right font-medium">Jobs</th>
                 </tr>
               </thead>
@@ -128,6 +132,21 @@ export default async function CustomersPage({
                     <td className="hidden max-w-56 truncate px-4 py-2.5 md:table-cell">{c.email ?? '—'}</td>
                     <td className="hidden max-w-72 truncate px-4 py-2.5 text-muted-foreground lg:table-cell">
                       {c.address ?? '—'}
+                    </td>
+                    <td className="hidden px-4 py-2.5 whitespace-nowrap sm:table-cell">
+                      {c.primaryOperation ? (
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="size-2.5 rounded-sm"
+                            style={{ backgroundColor: getOperation(c.primaryOperation).color }}
+                            aria-hidden="true"
+                          />
+                          {getOperation(c.primaryOperation).singular}
+                          {c.location && <span className="text-muted-foreground">· {c.location}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">{c.location ?? '—'}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{c.jobCount}</td>
                   </tr>
