@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { AddressInput } from '@/components/address-input'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,7 +51,7 @@ export function CustomerForm({
         </div>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <Label htmlFor="c-address">Address</Label>
-          <Input id="c-address" name="address" defaultValue={defaults.address ?? ''} className="h-9" />
+          <AddressInput id="c-address" name="address" defaultValue={defaults.address ?? ''} />
         </div>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <Label htmlFor="c-notes">Notes</Label>
