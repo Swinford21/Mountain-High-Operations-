@@ -22,13 +22,28 @@ export function StatusBadge({ status }: { status: string }) {
   )
 }
 
+export function PaidMark({ className }: { className?: string }) {
+  return (
+    <span
+      title="Paid"
+      className={cn(
+        'inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-xs leading-none font-bold text-background',
+        className,
+      )}
+    >
+      <span aria-hidden="true">$</span>
+      <span className="sr-only">Paid</span>
+    </span>
+  )
+}
+
 export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?: boolean }) {
   const op = getOperation(job.operation)
   const address = job.address || job.customerAddress
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className="group flex gap-4 rounded-lg border bg-card p-4 transition-colors hover:border-foreground/30"
+      className="group flex gap-4 rounded-lg border border-foreground/70 bg-card p-4 transition-colors hover:border-foreground"
     >
       <div className="flex w-16 shrink-0 flex-col">
         {showDate && <span className="text-xs text-muted-foreground">{formatDateShort(job.scheduledDate)}</span>}
@@ -39,6 +54,7 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{op.singular}</span>
           {job.status !== 'scheduled' && <StatusBadge status={job.status} />}
+          {job.paymentStatus === 'paid' && <PaidMark />}
         </div>
         <span className="font-semibold text-pretty group-hover:underline">{job.title}</span>
         <span className="text-sm text-muted-foreground">{job.customerName}</span>

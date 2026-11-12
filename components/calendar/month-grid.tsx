@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PaidMark } from '@/components/jobs/job-card'
 import { jobColor } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { addDays, formatTime12 } from '@/lib/time'
@@ -104,16 +105,17 @@ export function MonthGrid({
                   return (
                     <span
                       key={j.id}
-                      title={`${j.title} · ${j.customerName}${j.truckName ? ` · ${j.truckName}` : ''}`}
+                      title={`${j.title} · ${j.customerName}${j.truckName ? ` · ${j.truckName}` : ''}${j.paymentStatus === 'paid' ? ' · Paid' : ''}`}
                       className={cn(
-                        'flex items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-xs',
+                        'flex items-center gap-1.5 truncate rounded border border-foreground/70 px-1.5 py-0.5 text-xs',
                         j.status === 'completed' && 'opacity-60',
                       )}
                       style={{ backgroundColor: `color-mix(in oklch, ${color} 18%, transparent)` }}
                     >
                       <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                       <span className="font-mono tabular-nums">{formatTime12(j.startTime).replace(':00', '')}</span>
-                      <span className="truncate">{j.title}</span>
+                      <span className="min-w-0 flex-1 truncate">{j.title}</span>
+                      {j.paymentStatus === 'paid' && <PaidMark />}
                     </span>
                   )
                 })}

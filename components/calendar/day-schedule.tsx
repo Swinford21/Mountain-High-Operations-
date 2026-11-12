@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { PaidMark } from '@/components/jobs/job-card'
 import { jobColor } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { formatDateLong, formatMoney, formatTime12 } from '@/lib/time'
@@ -223,7 +224,7 @@ function JobItem({
   return (
     <div
       className={cn(
-        'flex items-stretch gap-1 rounded-md border bg-background',
+        'flex items-stretch gap-1 rounded-md border border-foreground/70 bg-background',
         overlay && 'cursor-grabbing shadow-lg ring-2 ring-foreground/20',
         job.status === 'completed' && 'opacity-70',
       )}
@@ -238,9 +239,12 @@ function JobItem({
       <Link href={`/jobs/${job.id}`} className="group flex min-w-0 flex-1 flex-col px-2 py-1.5 text-sm">
         <span className="flex items-baseline justify-between gap-2">
           <span className="truncate font-medium group-hover:underline">{job.title}</span>
-          {isAdmin && job.priceCents != null && (
-            <span className="shrink-0 font-mono text-xs tabular-nums">{formatMoney(job.priceCents)}</span>
-          )}
+          <span className="flex shrink-0 items-center gap-1.5">
+            {isAdmin && job.priceCents != null && (
+              <span className="font-mono text-xs tabular-nums">{formatMoney(job.priceCents)}</span>
+            )}
+            {job.paymentStatus === 'paid' && <PaidMark />}
+          </span>
         </span>
         <span className="truncate text-xs text-muted-foreground">
           <span className="font-mono tabular-nums">{formatTime12(job.startTime)}</span> · {job.customerName}
