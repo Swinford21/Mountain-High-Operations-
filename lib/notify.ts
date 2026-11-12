@@ -38,6 +38,9 @@ export function isValidEmail(email: string | null | undefined): email is string 
   return !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 }
 
+/** Every customer email is blind-copied here so the office has a record of what went out. */
+export const EMAIL_BCC = 'eric@mountainhighmulch.com'
+
 export async function sendEmail(input: { to: string; subject: string; html: string; text: string }): Promise<SendResult> {
   const resend = getResend()
   if (!resend || !process.env.EMAIL_FROM) return { ok: false, error: 'Email is not configured' }
@@ -45,6 +48,7 @@ export async function sendEmail(input: { to: string; subject: string; html: stri
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM,
       to: input.to,
+      ...(input.to.trim().toLowerCase() === EMAIL_BCC ? {} : { bcc: EMAIL_BCC }),
       subject: input.subject,
       html: input.html,
       text: input.text,
