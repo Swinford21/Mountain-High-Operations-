@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { MapPin, User } from 'lucide-react'
+import { MapPin, Truck, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getOperation, statusLabel } from '@/lib/operations'
+import { getOperation, jobColor, statusLabel } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { formatDateShort, formatTime12 } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -34,7 +34,7 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
         {showDate && <span className="text-xs text-muted-foreground">{formatDateShort(job.scheduledDate)}</span>}
         <span className="font-mono text-sm font-semibold tabular-nums">{formatTime12(job.startTime)}</span>
       </div>
-      <span className="w-1 shrink-0 rounded-full" style={{ backgroundColor: op.color }} aria-hidden="true" />
+      <span className="w-1 shrink-0 rounded-full" style={{ backgroundColor: jobColor(job) }} aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{op.singular}</span>
@@ -53,6 +53,12 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
             <User className="size-3.5" aria-hidden="true" />
             {job.assigneeName ?? 'Unassigned'}
           </span>
+          {job.truckName && (
+            <span className="flex items-center gap-1">
+              <Truck className="size-3.5" aria-hidden="true" />
+              {job.truckName}
+            </span>
+          )}
         </div>
       </div>
     </Link>

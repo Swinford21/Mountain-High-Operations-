@@ -1,6 +1,16 @@
 import { and, asc, eq, gte, inArray, lte, ne } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { customers, jobItems, jobs, products, user } from '@/lib/db/schema'
+import { customers, jobItems, jobs, products, trucks, user } from '@/lib/db/schema'
+
+export async function getTrucks() {
+  return db
+    .select({ id: trucks.id, name: trucks.name, color: trucks.color })
+    .from(trucks)
+    .where(eq(trucks.active, true))
+    .orderBy(asc(trucks.sortOrder), asc(trucks.name))
+}
+
+export type TruckOption = Awaited<ReturnType<typeof getTrucks>>[number]
 
 export async function getTeamMembers() {
   return db
@@ -77,10 +87,14 @@ export async function getJobsInRange(opts: {
       customerAddress: customers.address,
       paymentStatus: jobs.paymentStatus,
       priceCents: jobs.priceCents,
+      truckId: jobs.truckId,
+      truckName: trucks.name,
+      truckColor: trucks.color,
     })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(user, eq(jobs.assignedTo, user.id))
+    .leftJoin(trucks, eq(jobs.truckId, trucks.id))
     .where(and(...conditions))
     .orderBy(asc(jobs.scheduledDate), asc(jobs.startTime))
 }
@@ -89,10 +103,11 @@ export type JobListItem = Awaited<ReturnType<typeof getJobsInRange>>[number]
 
 export async function getJobDetail(id: number) {
   const [row] = await db
-    .select({ job: jobs, customer: customers, assigneeName: user.name })
+    .select({ job: jobs, customer: customers, assigneeName: user.name, truckName: trucks.name, truckColor: trucks.color })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(user, eq(jobs.assignedTo, user.id))
+    .leftJoin(trucks, eq(jobs.truckId, trucks.id))
     .where(eq(jobs.id, id))
     .limit(1)
   return row ?? null

@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { getOperation } from '@/lib/operations'
+import { jobColor } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { formatDateLong, formatMoney, formatTime12 } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -220,7 +220,6 @@ function JobItem({
   handle?: React.ReactNode
   overlay?: boolean
 }) {
-  const op = getOperation(job.operation)
   return (
     <div
       className={cn(
@@ -235,7 +234,7 @@ function JobItem({
           <GripVertical className="size-4" />
         </span>
       )}
-      <span className="my-1.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: op.color }} aria-hidden="true" />
+      <span className="my-1.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: jobColor(job) }} aria-hidden="true" />
       <Link href={`/jobs/${job.id}`} className="group flex min-w-0 flex-1 flex-col px-2 py-1.5 text-sm">
         <span className="flex items-baseline justify-between gap-2">
           <span className="truncate font-medium group-hover:underline">{job.title}</span>
@@ -245,6 +244,7 @@ function JobItem({
         </span>
         <span className="truncate text-xs text-muted-foreground">
           <span className="font-mono tabular-nums">{formatTime12(job.startTime)}</span> · {job.customerName}
+          {job.truckName ? ` · ${job.truckName}` : ''}
           {job.assigneeName ? ` · ${job.assigneeName}` : ''}
         </span>
       </Link>

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { products, session, user } from '@/lib/db/schema'
+import { products, session, trucks, user } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/session'
 import type { ActionState } from '@/app/actions/jobs'
 
@@ -24,6 +24,20 @@ export async function setUserRole(userId: string, role: string): Promise<ActionS
     ok: true,
     message: parsed.data === 'pending' ? 'Access removed' : `Role set to ${parsed.data}`,
   }
+}
+
+export async function setTruckColor(truckId: number, color: string): Promise<ActionState> {
+  await requireAdmin()
+  if (!Number.isInteger(truckId) || truckId <= 0) return { ok: false, message: 'Truck not found' }
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return { ok: false, message: 'Pick a valid color' }
+  const [updated] = await db
+    .update(trucks)
+    .set({ color: color.toLowerCase() })
+    .where(eq(trucks.id, truckId))
+    .returning({ name: trucks.name })
+  if (!updated) return { ok: false, message: 'Truck not found' }
+  revalidatePath('/', 'layout')
+  return { ok: true, message: `${updated.name} color updated` }
 }
 
 export async function updateProduct(

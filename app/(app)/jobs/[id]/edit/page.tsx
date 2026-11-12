@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { JobForm } from '@/components/jobs/job-form'
 import { updateJob } from '@/app/actions/jobs'
-import { getCustomerOptions, getJobDetail, getJobItems, getProductOptions, getTeamMembers } from '@/lib/queries'
+import { getCustomerOptions, getJobDetail, getJobItems, getProductOptions, getTeamMembers, getTrucks } from '@/lib/queries'
 import { requireAdmin } from '@/lib/session'
 
 export const metadata = { title: 'Edit job' }
@@ -12,11 +12,12 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const jobId = Number(id)
   if (!Number.isInteger(jobId)) notFound()
-  const [detail, team, products, items] = await Promise.all([
+  const [detail, team, products, items, trucks] = await Promise.all([
     getJobDetail(jobId),
     getTeamMembers(),
     getProductOptions(),
     getJobItems(jobId),
+    getTrucks(),
   ])
   if (!detail) notFound()
   const { job } = detail
@@ -31,6 +32,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           action={updateJob.bind(null, job.id)}
           customers={customers}
           team={team}
+          trucks={trucks}
           products={products}
           initialItems={items.map((i) => ({
             productId: i.productId,
@@ -48,6 +50,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
             durationMinutes: job.durationMinutes,
             address: job.address,
             assignedTo: job.assignedTo,
+            truckId: job.truckId,
             priceCents: job.priceCents,
             description: job.description,
           }}

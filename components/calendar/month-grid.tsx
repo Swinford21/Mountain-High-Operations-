@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getOperation } from '@/lib/operations'
+import { jobColor } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { addDays, formatTime12 } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -94,25 +94,26 @@ export function MonthGrid({
               {dayJobs.length > 0 && (
                 <div className="flex flex-wrap gap-1 sm:hidden" aria-hidden="true">
                   {dayJobs.slice(0, 6).map((j) => (
-                    <span key={j.id} className="size-1.5 rounded-full" style={{ backgroundColor: getOperation(j.operation).color }} />
+                    <span key={j.id} className="size-1.5 rounded-full" style={{ backgroundColor: jobColor(j) }} />
                   ))}
                 </div>
               )}
               <div className="hidden flex-col gap-1 sm:flex">
                 {dayJobs.slice(0, MAX_CHIPS).map((j) => {
-                  const op = getOperation(j.operation)
+                  const color = jobColor(j)
                   return (
                     <span
                       key={j.id}
+                      title={`${j.title} · ${j.customerName}${j.truckName ? ` · ${j.truckName}` : ''}`}
                       className={cn(
                         'flex items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-xs',
                         j.status === 'completed' && 'opacity-60',
                       )}
-                      style={{ backgroundColor: `color-mix(in oklch, ${op.color} 18%, transparent)` }}
+                      style={{ backgroundColor: `color-mix(in oklch, ${color} 18%, transparent)` }}
                     >
-                      <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: op.color }} />
+                      <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                       <span className="font-mono tabular-nums">{formatTime12(j.startTime).replace(':00', '')}</span>
-                      <span className="truncate">{j.customerName}</span>
+                      <span className="truncate">{j.title}</span>
                     </span>
                   )
                 })}

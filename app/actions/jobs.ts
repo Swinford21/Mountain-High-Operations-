@@ -31,6 +31,7 @@ const jobSchema = z.object({
   durationMinutes: z.coerce.number().int().min(15).max(24 * 60),
   address: optionalText,
   assignedTo: optionalText,
+  truckId: z.coerce.number().int().positive().optional(),
   price: z
     .string()
     .trim()
@@ -114,6 +115,7 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
       durationMinutes: data.durationMinutes,
       address: data.address,
       assignedTo: data.assignedTo,
+      truckId: data.truckId ?? null,
       priceCents: data.price,
       description: data.description,
       createdBy: admin.id,
@@ -153,6 +155,7 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
       durationMinutes: data.durationMinutes,
       address: data.address,
       assignedTo: data.assignedTo,
+      truckId: data.truckId ?? null,
       priceCents: data.price,
       description: data.description,
       // A new date needs a new day-before reminder.

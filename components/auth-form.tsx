@@ -52,16 +52,6 @@ export function AuthForm({ mode, isFirstUser = false }: { mode: 'sign-in' | 'sig
           <p className="text-sm font-semibold tracking-widest text-balance text-brand-gold uppercase">
               Building community through leadership and innovation
             </p>
-            <div className="flex flex-col items-center gap-2">
-              <h2 className="text-xs font-semibold tracking-widest text-sidebar-foreground/60 uppercase">Our core values</h2>
-              <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-base leading-relaxed text-sidebar-foreground/85">
-                {['World Class Service', 'Only Premium Products', 'Respect the Team', 'Timeliness', 'Healthy Growth'].map(
-                  (value) => (
-                    <li key={value}>{value}</li>
-                  ),
-                )}
-              </ul>
-            </div>
         </div>
       </div>
 

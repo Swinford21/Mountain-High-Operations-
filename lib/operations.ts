@@ -15,6 +15,11 @@ export function getOperation(id: string) {
   return OPERATIONS.find((o) => o.id === id) ?? OPERATIONS[0]
 }
 
+/** A job takes its truck's color once a truck is assigned; otherwise its operation color. */
+export function jobColor(job: { operation: string; truckColor?: string | null }) {
+  return job.truckColor || getOperation(job.operation).color
+}
+
 export const JOB_STATUSES = [
   { id: 'scheduled', label: 'Scheduled' },
   { id: 'in_progress', label: 'In progress' },
