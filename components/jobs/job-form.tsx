@@ -12,9 +12,16 @@ import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
 import type { Operation } from '@/lib/operations'
 import { REPEAT_OPTIONS } from '@/lib/recurrence'
-import { positionLabel } from '@/lib/positions'
+import { roleLabel } from '@/lib/session-roles'
 import type { ActionState } from '@/app/actions/jobs'
-import type { CrewOption, CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
+import type {
+  CrewOption,
+  CustomerOption,
+  ProductOption,
+  SalespersonOption,
+  TeamMember,
+  TruckOption,
+} from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
 type JobDefaults = {
@@ -28,6 +35,7 @@ type JobDefaults = {
   assignedTo?: string | null
   truckId?: number | null
   crewId?: number | null
+  salespersonId?: string | null
   priceCents?: number | null
   description?: string | null
 }
@@ -43,6 +51,8 @@ export function JobForm({
   crews,
   operations,
   products,
+  salespeople = [],
+  estimateId,
   initialItems = [],
   defaults,
   mode,
@@ -54,6 +64,9 @@ export function JobForm({
   crews: CrewOption[]
   operations: Operation[]
   products: ProductOption[]
+  salespeople?: SalespersonOption[]
+  /** Set when booking an approved estimate; the estimate moves to Scheduled once the job is saved. */
+  estimateId?: number
   initialItems?: MaterialLine[]
   defaults: JobDefaults
   mode: 'create' | 'edit'
@@ -84,6 +97,7 @@ export function JobForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-8">
+      {estimateId && <input type="hidden" name="estimateId" value={estimateId} />}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Operation</h2>
         <div role="radiogroup" aria-label="Operation" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -162,7 +176,7 @@ export function JobForm({
             {team.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
-                {positionLabel(m.position) ? ` — ${positionLabel(m.position)}` : ''}
+                {roleLabel(m.role) ? ` — ${roleLabel(m.role)}` : ''}
               </option>
             ))}
           </NativeSelect>
@@ -232,8 +246,8 @@ export function JobForm({
         </section>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col gap-2">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr]">
+        <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
           <Label htmlFor="address">Job address</Label>
           <AddressInput
             id="address"
@@ -257,6 +271,20 @@ export function JobForm({
             }}
             className="h-9 tabular-nums"
           />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="salespersonId">Salesperson</Label>
+          <NativeSelect id="salespersonId" name="salespersonId" defaultValue={defaults.salespersonId ?? ''}>
+            <option value="">None</option>
+            {salespeople.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+            {defaults.salespersonId && !salespeople.some((p) => p.id === defaults.salespersonId) && (
+              <option value={defaults.salespersonId}>Former salesperson</option>
+            )}
+          </NativeSelect>
         </div>
       </section>
 

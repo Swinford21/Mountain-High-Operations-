@@ -2,9 +2,9 @@
 
 import { useTransition } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { setUserRole } from '@/app/actions/admin'
+import { ASSIGNABLE_ROLES } from '@/lib/session-roles'
 
 export function RoleControl({
   userId,
@@ -24,32 +24,28 @@ export function RoleControl({
       if (r) (r.ok ? toast.success : toast.error)(r.message)
     })
 
-  if (role === 'pending') {
-    return (
-      <div className="flex gap-2">
-        <Button disabled={pending} onClick={() => run('crew')}>
-          Approve as crew
-        </Button>
-        <Button variant="outline" disabled={pending} onClick={() => run('admin')}>
-          Approve as admin
-        </Button>
-      </div>
-    )
-  }
-
-  // Only owners can change an owner's role or make someone an owner.
+  // Only owners can change an owner's access or make someone an owner.
   const locked = isSelf || (role === 'owner' && !viewerIsOwner)
+  const value = role === 'crew' ? 'installer' : role
+  const options = ASSIGNABLE_ROLES.filter((r) => r.id !== 'owner' || viewerIsOwner || role === 'owner')
 
   return (
-    <div className="w-40">
+    <div className="w-44">
       <label htmlFor={`role-${userId}`} className="sr-only">
-        Role
+        Access
       </label>
-      <NativeSelect id={`role-${userId}`} value={role} disabled={pending || locked} onChange={(e) => run(e.target.value)}>
-        {(viewerIsOwner || role === 'owner') && <option value="owner">Owner</option>}
-        <option value="admin">Admin</option>
-        <option value="crew">Crew</option>
-        <option value="pending">Remove access</option>
+      <NativeSelect id={`role-${userId}`} value={value} disabled={pending || locked} onChange={(e) => run(e.target.value)}>
+        {role === 'pending' && (
+          <option value="pending" disabled>
+            Approve as…
+          </option>
+        )}
+        {options.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+        {role !== 'pending' && <option value="pending">Remove access</option>}
       </NativeSelect>
     </div>
   )

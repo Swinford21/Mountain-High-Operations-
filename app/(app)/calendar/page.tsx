@@ -41,12 +41,14 @@ export default async function CalendarPage({
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : month === today.slice(0, 7) ? today : `${month}-01`
 
   const { gridStart, gridEnd, prev, next, label } = monthBounds(month)
-  const jobs = await getJobsInRange({
+  const rangeJobs = await getJobsInRange({
     start: gridStart,
     end: gridEnd,
     operations: selectedOps,
     assignedTo: mine ? me.id : undefined,
   })
+  // Field crew never receive prices or payment status, not even in the page data.
+  const jobs = isAdmin ? rangeJobs : rangeJobs.map((j) => ({ ...j, priceCents: null, paymentStatus: 'unpaid' }))
   const dayJobs = jobs.filter((j) => j.scheduledDate === day)
   const weekStart = addDays(day, -new Date(`${day}T12:00:00Z`).getUTCDay())
 

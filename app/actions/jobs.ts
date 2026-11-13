@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { customers, jobItems, jobNotes, jobs, payments } from '@/lib/db/schema'
+import { customers, estimates, jobItems, jobNotes, jobs, payments } from '@/lib/db/schema'
+import { isValidSalesperson } from '@/lib/queries'
 import { sendJobMessage, sendTomorrowReminders } from '@/lib/job-notifications'
 import { JOB_STATUSES } from '@/lib/operations'
 import { getAllOperations } from '@/lib/operations-server'
@@ -36,6 +37,8 @@ const jobSchema = z.object({
   durationMinutes: z.coerce.number().int().min(15).max(24 * 60),
   address: optionalText,
   assignedTo: optionalText,
+  salespersonId: optionalText,
+  estimateId: z.coerce.number().int().positive().optional(),
   truckId: z.coerce.number().int().positive().optional(),
   crewId: z.coerce.number().int().positive().optional(),
   price: z
@@ -116,6 +119,12 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
     customerId = created.id
   }
 
+  if (!(await isValidSalesperson(data.salespersonId))) return { ok: false, message: 'Pick a salesperson from the list' }
+  if (data.estimateId) {
+    const [est] = await db.select({ status: estimates.status }).from(estimates).where(eq(estimates.id, data.estimateId)).limit(1)
+    if (!est || est.status !== 'approved') return { ok: false, message: 'That estimate has already been scheduled or is not approved' }
+  }
+
   const dates = repeatDates(data.scheduledDate, data.repeat, data.repeatCount)
   const repeating = dates.length > 1
   const seriesId = repeating ? crypto.randomUUID() : null
@@ -133,6 +142,8 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
         assignedTo: data.assignedTo,
         truckId: data.truckId ?? null,
         crewId: data.crewId ?? null,
+        salespersonId: data.salespersonId,
+        estimateId: data.estimateId ?? null,
         priceCents: data.price,
         description: data.description,
         seriesId,
@@ -153,6 +164,13 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
   )
   if (items.length) await db.insert(jobItems).values(created.flatMap((j) => items.map((i) => ({ ...i, jobId: j.id }))))
   if (notes.length) await db.insert(jobNotes).values(notes)
+
+  if (data.estimateId) {
+    await db
+      .update(estimates)
+      .set({ status: 'scheduled', jobId: job.id, updatedAt: new Date() })
+      .where(and(eq(estimates.id, data.estimateId), eq(estimates.status, 'approved')))
+  }
 
   // Only the first visit gets a confirmation now; later visits get their usual day-before reminder.
   let sent = -1
@@ -180,6 +198,9 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
     (o) => o.id === data.operation && (o.active || o.id === before.operation),
   )
   if (!opAllowed) return { ok: false, message: 'Pick an operation' }
+  if (data.salespersonId !== before.salespersonId && !(await isValidSalesperson(data.salespersonId))) {
+    return { ok: false, message: 'Pick a salesperson from the list' }
+  }
   const rescheduled = before.scheduledDate !== data.scheduledDate || before.startTime !== data.startTime
 
   await db
@@ -195,6 +216,7 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
       assignedTo: data.assignedTo,
       truckId: data.truckId ?? null,
       crewId: data.crewId ?? null,
+      salespersonId: data.salespersonId,
       priceCents: data.price,
       description: data.description,
       // A new date needs a new day-before reminder.

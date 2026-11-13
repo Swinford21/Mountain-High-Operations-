@@ -85,6 +85,13 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 Repeat last order
               </Button>
             )}
+            <Button
+              variant="outline"
+              render={<Link href={`/estimates/new?customer=${customer.id}`} />}
+              nativeButton={false}
+            >
+              New estimate
+            </Button>
             <Button render={<Link href={`/jobs/new?customer=${customer.id}`} />} nativeButton={false}>
               <Plus aria-hidden="true" />
               Schedule job

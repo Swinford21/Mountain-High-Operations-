@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { and, eq, sql } from 'drizzle-orm'
-import { Plus } from 'lucide-react'
+import { CalendarClock, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { JobCard } from '@/components/jobs/job-card'
@@ -8,6 +8,7 @@ import { ClockCard } from '@/components/time/clock-card'
 import { SendRemindersButton } from '@/components/jobs/send-reminders-button'
 import { MilestoneList } from '@/components/hr/milestone-list'
 import { getUpcomingMilestones } from '@/lib/hr'
+import { countUnscheduledEstimates } from '@/lib/estimates'
 import { db } from '@/lib/db'
 import { jobs, user as userTable } from '@/lib/db/schema'
 import { findOperation } from '@/lib/operations'
@@ -69,7 +70,7 @@ export default async function TodayPage() {
                 <h2 className="font-semibold">Your jobs</h2>
                 <div className="flex flex-col gap-2">
                   {myJobs.map((j) => (
-                    <JobCard key={j.id} job={j} />
+                    <JobCard key={j.id} job={j} showPayment={isAdmin} />
                   ))}
                 </div>
               </section>
@@ -88,7 +89,7 @@ export default async function TodayPage() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {otherJobs.map((j) => (
-                    <JobCard key={j.id} job={j} />
+                    <JobCard key={j.id} job={j} showPayment={isAdmin} />
                   ))}
                 </div>
               )}
@@ -112,7 +113,7 @@ async function AdminPanel({
   tomorrow: string
   todayCounts: { operation: string }[]
 }) {
-  const [clockedIn, [reminders], [pendingUsers], operations, milestones] = await Promise.all([
+  const [clockedIn, [reminders], [pendingUsers], operations, milestones, unscheduled] = await Promise.all([
     getClockedInNow(),
     db
       .select({
@@ -124,12 +125,28 @@ async function AdminPanel({
     db.select({ count: sql<number>`count(*)::int` }).from(userTable).where(eq(userTable.role, 'pending')),
     getOperations(),
     getUpcomingMilestones(7),
+    countUnscheduledEstimates(),
   ])
 
   const byOp = operations.map((op) => ({ ...op, count: todayCounts.filter((j) => j.operation === op.id).length }))
 
   return (
     <>
+      {unscheduled > 0 && (
+        <Link
+          href="/unscheduled"
+          className="flex items-center justify-between gap-3 rounded-xl border border-accent bg-accent/20 p-5 hover:bg-accent/30"
+        >
+          <span className="flex flex-col">
+            <span className="font-semibold">
+              {unscheduled} approved estimate{unscheduled === 1 ? '' : 's'} to schedule
+            </span>
+            <span className="text-sm text-muted-foreground">Open the Unscheduled list to book them.</span>
+          </span>
+          <CalendarClock className="size-5 shrink-0" aria-hidden="true" />
+        </Link>
+      )}
+
       {milestones.length > 0 && (
         <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
           <div className="flex items-center justify-between">
@@ -191,7 +208,7 @@ async function AdminPanel({
 
       {pendingUsers.count > 0 && (
         <Link
-          href="/team"
+          href="/hr/team"
           className="flex items-center justify-between rounded-xl border border-accent bg-accent/25 p-5 text-sm font-medium"
         >
           {pendingUsers.count} team member{pendingUsers.count === 1 ? '' : 's'} waiting for approval

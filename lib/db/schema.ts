@@ -10,8 +10,10 @@ export const user = pgTable('user', {
   image: text('image'),
   role: text('role').notNull().default('pending'),
   phone: text('phone'),
-  /** Job position on the crew: manager, installer, driver. Label only; access comes from role. */
+  /** Legacy job title column; access levels now live in `role`. */
   position: text('position'),
+  /** Salespeople can be credited on estimates and jobs; their totals show on the Sales page. */
+  isSalesperson: boolean('is_salesperson').notNull().default(false),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
@@ -98,6 +100,8 @@ export const jobs = pgTable('jobs', {
   crewId: integer('crew_id'),
   /** Jobs created together from one repeating schedule share a series id. */
   seriesId: text('series_id'),
+  estimateId: integer('estimate_id'),
+  salespersonId: text('salesperson_id'),
   repeatRule: text('repeat_rule'),
   priceCents: integer('price_cents'),
   paymentStatus: text('payment_status').notNull().default('unpaid'),
@@ -336,3 +340,43 @@ export type Employee = typeof employees.$inferSelect
 export type Truck = typeof trucks.$inferSelect
 export type TruckRepair = typeof truckRepairs.$inferSelect
 export type TruckWarranty = typeof truckWarranties.$inferSelect
+
+/** Quotes sent to customers. Once approved they wait in the Unscheduled queue until a job is booked. */
+export const estimates = pgTable('estimates', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  operation: text('operation').notNull(),
+  title: text('title').notNull(),
+  address: text('address'),
+  priceCents: integer('price_cents'),
+  description: text('description'),
+  validUntil: date('valid_until', { mode: 'string' }),
+  /** draft | sent | approved | declined | scheduled */
+  status: text('status').notNull().default('draft'),
+  /** Unguessable token for the customer's public approval link. */
+  approvalToken: text('approval_token').notNull().unique(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  approvedByName: text('approved_by_name'),
+  /** customer (via link) | office (marked by staff) */
+  approvalMethod: text('approval_method'),
+  declinedAt: timestamp('declined_at', { withTimezone: true }),
+  declineReason: text('decline_reason'),
+  jobId: integer('job_id'),
+  salespersonId: text('salesperson_id'),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const estimateItems = pgTable('estimate_items', {
+  id: serial('id').primaryKey(),
+  estimateId: integer('estimate_id').notNull(),
+  productId: integer('product_id'),
+  name: text('name').notNull(),
+  unit: text('unit').notNull().default('each'),
+  quantity: numeric('quantity', { precision: 10, scale: 2, mode: 'number' }).notNull(),
+  unitPriceCents: integer('unit_price_cents').notNull().default(0),
+})
+
+export type Estimate = typeof estimates.$inferSelect

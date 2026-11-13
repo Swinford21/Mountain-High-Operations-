@@ -106,7 +106,7 @@ export default async function JobsPage({
                 </h2>
                 <div className="grid gap-2 lg:grid-cols-2">
                   {list.map((j) => (
-                    <JobCard key={j.id} job={j} />
+                    <JobCard key={j.id} job={j} showPayment={isAdminRole(me.role)} />
                   ))}
                 </div>
               </section>

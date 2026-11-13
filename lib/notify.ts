@@ -50,20 +50,23 @@ export function isValidEmail(email: string | null | undefined): email is string 
 export const EMAIL_BCC = 'eric@mountainhighmulch.com'
 
 export async function sendEmail(input: {
-  to: string
+  to: string | string[]
   subject: string
   html: string
   text: string
   /** Marketing sends pass false so the office copy only covers customer job emails. */
   bcc?: boolean
+  replyTo?: string
 }): Promise<SendResult> {
   const resend = getResend()
   if (!resend || !process.env.EMAIL_FROM) return { ok: false, error: 'Email is not configured' }
+  const recipients = (Array.isArray(input.to) ? input.to : [input.to]).map((r) => r.trim().toLowerCase())
   try {
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM,
       to: input.to,
-      ...(input.bcc === false || input.to.trim().toLowerCase() === EMAIL_BCC ? {} : { bcc: EMAIL_BCC }),
+      ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      ...(input.bcc === false || recipients.includes(EMAIL_BCC) ? {} : { bcc: EMAIL_BCC }),
       subject: input.subject,
       html: input.html,
       text: input.text,
@@ -117,7 +120,7 @@ export async function logMessage(entry: {
   jobId?: number | null
   campaignId?: number | null
   channel: 'email' | 'sms'
-  kind: 'confirmation' | 'reminder' | 'campaign'
+  kind: 'confirmation' | 'reminder' | 'campaign' | 'estimate' | 'estimate-approved'
   recipient: string
   result: SendResult
 }) {
@@ -142,7 +145,16 @@ function escapeHtml(value: string) {
 }
 
 /** Wraps plain text paragraphs in a simple branded email layout. */
-export function emailLayout(opts: { heading: string; paragraphs: string[]; rows?: [string, string][]; footer?: string }) {
+export function emailLayout(opts: {
+  heading: string
+  paragraphs: string[]
+  rows?: [string, string][]
+  footer?: string
+  cta?: { label: string; href: string }
+}) {
+  const cta = opts.cta
+    ? `<p style="margin:8px 0 20px"><a href="${escapeHtml(opts.cta.href)}" style="display:inline-block;background:#0d2547;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:6px">${escapeHtml(opts.cta.label)}</a></p>`
+    : ''
   const rows = (opts.rows ?? [])
     .map(
       ([k, v]) =>
@@ -160,6 +172,7 @@ export function emailLayout(opts: { heading: string; paragraphs: string[]; rows?
 <h1 style="margin:0 0 16px;font-size:20px;color:#0d2547">${escapeHtml(opts.heading)}</h1>
 ${paragraphs}
 ${rows ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 16px;font-size:14px">${rows}</table>` : ''}
+${cta}
 </td></tr>
 <tr><td style="padding:16px 24px;border-top:1px solid #efe7cc;color:#5d6a80;font-size:12px;line-height:1.5">${opts.footer ?? BUSINESS_NAME}<br/>${BUSINESS_ADDRESS} · ${BUSINESS_PHONE}</td></tr>
 </table></td></tr></table></body></html>`

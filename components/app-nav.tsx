@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
+  CalendarClock,
   CalendarDays,
+  FileSignature,
   ClipboardList,
   CreditCard,
   IdCard,
@@ -18,18 +20,19 @@ import {
   TrendingUp,
   Truck,
   Users,
-  UserCog,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/components/sign-out-button'
 import { cn } from '@/lib/utils'
-import { isAdminRole } from '@/lib/session-roles'
+import { isAdminRole, roleLabel } from '@/lib/session-roles'
 
 const NAV = [
   { href: '/', label: 'Today', icon: Sun, admin: false },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays, admin: false },
   { href: '/jobs', label: 'Jobs', icon: ClipboardList, admin: false },
+  { href: '/estimates', label: 'Estimates', icon: FileSignature, admin: true },
+  { href: '/unscheduled', label: 'Unscheduled', icon: CalendarClock, admin: true },
   { href: '/time', label: 'Time Clock', icon: Timer, admin: false },
   { href: '/customers', label: 'Customers', icon: Users, admin: true },
   { href: '/products', label: 'Products', icon: Package, admin: true },
@@ -38,11 +41,10 @@ const NAV = [
   { href: '/marketing', label: 'Marketing', icon: Megaphone, admin: true },
   { href: '/hr', label: 'Human Resources', icon: IdCard, admin: true },
   { href: '/logistics', label: 'Logistics', icon: Truck, admin: true },
-  { href: '/team', label: 'Team', icon: UserCog, admin: true },
   { href: '/settings', label: 'Settings', icon: Settings, admin: true },
 ]
 
-type NavUser = { name: string; email: string; role: string }
+type NavUser = { name: string; email: string; role: string; unscheduledCount?: number }
 
 function Brand() {
   return (
@@ -81,6 +83,12 @@ function NavLinks({ user, onNavigate }: { user: NavUser; onNavigate?: () => void
           >
             <Icon className={cn('size-4', active && 'text-sidebar-primary')} aria-hidden="true" />
             {item.label}
+            {item.href === '/unscheduled' && !!user.unscheduledCount && (
+              <span className="ml-auto rounded-full bg-sidebar-primary px-1.5 text-xs font-semibold text-sidebar-primary-foreground tabular-nums">
+                {user.unscheduledCount}
+                <span className="sr-only"> waiting</span>
+              </span>
+            )}
           </Link>
         )
       })}
@@ -93,7 +101,7 @@ function UserBlock({ user }: { user: NavUser }) {
     <div className="flex flex-col gap-2 border-t border-sidebar-border pt-4">
       <div className="flex flex-col px-2">
         <span className="truncate text-sm font-medium">{user.name}</span>
-        <span className="truncate text-xs text-sidebar-foreground/70 capitalize">{user.role}</span>
+        <span className="truncate text-xs text-sidebar-foreground/70">{roleLabel(user.role) ?? user.role}</span>
       </div>
       <SignOutButton className="justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
     </div>
