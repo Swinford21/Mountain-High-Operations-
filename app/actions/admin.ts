@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { account, products, session, trucks, user } from '@/lib/db/schema'
 import { requireAdmin, requireOwner } from '@/lib/session'
+import { POSITIONS, positionLabel } from '@/lib/positions'
 import type { ActionState } from '@/app/actions/jobs'
 
 const roleSchema = z.enum(['owner', 'admin', 'crew', 'pending'])
@@ -31,6 +32,20 @@ export async function setUserRole(userId: string, role: string): Promise<ActionS
     ok: true,
     message: parsed.data === 'pending' ? 'Access removed' : `Role set to ${parsed.data}`,
   }
+}
+
+export async function setUserPosition(userId: string, position: string): Promise<ActionState> {
+  await requireAdmin()
+  const value = position === '' ? null : POSITIONS.find((p) => p.id === position)?.id
+  if (value === undefined) return { ok: false, message: 'Unknown position' }
+  const [updated] = await db
+    .update(user)
+    .set({ position: value, updatedAt: new Date() })
+    .where(eq(user.id, userId))
+    .returning({ name: user.name })
+  if (!updated) return { ok: false, message: 'Team member not found' }
+  revalidatePath('/team')
+  return { ok: true, message: value ? `${updated.name} set as ${positionLabel(value)}` : `Position cleared for ${updated.name}` }
 }
 
 const passwordSchema = z

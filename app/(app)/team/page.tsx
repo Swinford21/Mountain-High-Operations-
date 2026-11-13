@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { RoleControl } from '@/components/team/role-control'
 import { PasswordDialog } from '@/components/team/password-dialog'
+import { PositionControl } from '@/components/team/position-control'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/session'
@@ -15,7 +16,14 @@ export default async function TeamPage() {
   const me = await requireAdmin()
   const viewerIsOwner = me.role === 'owner'
   const members = await db
-    .select({ id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt })
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      position: user.position,
+      createdAt: user.createdAt,
+    })
     .from(user)
     .orderBy(
       sql`case ${user.role} when 'pending' then 0 when 'owner' then 1 when 'admin' then 2 else 3 end`,
@@ -69,7 +77,8 @@ export default async function TeamPage() {
                   </span>
                   <span className="text-sm text-muted-foreground">{m.email}</span>
                 </span>
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-2">
+                  <PositionControl userId={m.id} name={m.name} position={m.position} />
                   {viewerIsOwner && <PasswordDialog userId={m.id} name={m.name} isSelf={m.id === me.id} />}
                   <RoleControl userId={m.id} role={m.role} isSelf={m.id === me.id} viewerIsOwner={viewerIsOwner} />
                 </span>
@@ -77,7 +86,8 @@ export default async function TeamPage() {
             ))}
           </ul>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Owners can do everything admins can, plus reset passwords and manage other owners. Admins manage jobs,
+            Position (Manager, Installer, Driver) is a job title shown when assigning jobs. It doesn&apos;t change
+            what someone can access. Owners can do everything admins can, plus reset passwords and manage other owners. Admins manage jobs,
             customers, payments, marketing, HR, logistics, and timesheets. Crew can see the schedule, update job status,
             and use the time clock.
           </p>

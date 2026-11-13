@@ -1,19 +1,21 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { and, asc, desc, eq, isNull, or } from 'drizzle-orm'
-import { Mail, MapPin, MessageSquare, Pencil, Phone } from 'lucide-react'
+import { Mail, MapPin, MessageSquare, Pencil, Phone, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/jobs/job-card'
 import { JobStatusControl } from '@/components/jobs/job-status-control'
 import { JobAdminActions, PaymentApplyButton, PaymentToggle } from '@/components/jobs/job-admin-actions'
 import { db } from '@/lib/db'
-import { jobNotes, messageLog, payments, user } from '@/lib/db/schema'
+import { jobFiles, jobNotes, messageLog, payments, user } from '@/lib/db/schema'
+import { JobFiles } from '@/components/jobs/job-files'
 import { InternalNotes } from '@/components/jobs/internal-notes'
 import { addAdminNote, addCrewNote, deleteJobNote } from '@/app/actions/job-notes'
 import { findOperation } from '@/lib/operations'
 import { getAllOperations } from '@/lib/operations-server'
 import { getJobDetail, getJobItems } from '@/lib/queries'
+import { repeatLabel } from '@/lib/recurrence'
 import { isAdminRole, requireUser } from '@/lib/session'
 import { formatDateLong, formatMoney, formatTime12, formatTimestamp } from '@/lib/time'
 
@@ -40,7 +42,7 @@ export default async function JobDetailPage({
   const endMinutes = Number(job.startTime.slice(0, 2)) * 60 + Number(job.startTime.slice(3)) + job.durationMinutes
   const endTime = `${String(Math.floor(endMinutes / 60) % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
 
-  const [items, noteRows] = await Promise.all([
+  const [items, noteRows, fileRows] = await Promise.all([
     getJobItems(job.id),
     db
       .select({
@@ -55,7 +57,23 @@ export default async function JobDetailPage({
       .leftJoin(user, eq(user.id, jobNotes.authorId))
       .where(isAdmin ? eq(jobNotes.jobId, job.id) : and(eq(jobNotes.jobId, job.id), eq(jobNotes.visibility, 'crew')))
       .orderBy(asc(jobNotes.createdAt)),
+    db
+      .select({ file: jobFiles, uploaderName: user.name })
+      .from(jobFiles)
+      .leftJoin(user, eq(user.id, jobFiles.uploadedBy))
+      .where(eq(jobFiles.jobId, job.id))
+      .orderBy(asc(jobFiles.createdAt)),
   ])
+  const files = fileRows.map(({ file, uploaderName }) => ({
+    id: file.id,
+    filename: file.filename,
+    contentType: file.contentType,
+    sizeBytes: file.sizeBytes,
+    caption: file.caption,
+    uploaderName,
+    createdAt: file.createdAt.toISOString(),
+    canEdit: isAdmin || file.uploadedBy === me.id,
+  }))
   const toNote = (n: (typeof noteRows)[number]) => ({
     id: n.id,
     body: n.body,
@@ -79,7 +97,7 @@ export default async function JobDetailPage({
 
   const banner =
     sp.created || sp.updated
-      ? `${sp.created ? 'Job scheduled' : 'Job updated'}.${
+      ? `${sp.created ? (Number(sp.created) > 1 ? `Repeating job scheduled — ${sp.created} visits added to the calendar` : 'Job scheduled') : 'Job updated'}.${
           sp.sent === undefined
             ? ''
             : sp.sent === '0'
@@ -102,10 +120,16 @@ export default async function JobDetailPage({
         }
         actions={
           isAdmin && (
-            <Button variant="outline" render={<Link href={`/jobs/${job.id}/edit`} />} nativeButton={false}>
-              <Pencil aria-hidden="true" />
-              Edit
-            </Button>
+            <>
+              <Button variant="outline" render={<Link href={`/jobs/new?from=${job.id}`} />} nativeButton={false}>
+                <Repeat aria-hidden="true" />
+                Repeat order
+              </Button>
+              <Button variant="outline" render={<Link href={`/jobs/${job.id}/edit`} />} nativeButton={false}>
+                <Pencil aria-hidden="true" />
+                Edit
+              </Button>
+            </>
           )
         }
       />
@@ -149,6 +173,15 @@ export default async function JobDetailPage({
                   <dt className="text-muted-foreground">Crew</dt>
                   <dd className="font-medium">{crewName ?? 'No crew'}</dd>
                 </div>
+                {job.repeatRule && (
+                  <div className="flex flex-col gap-1">
+                    <dt className="text-muted-foreground">Repeats</dt>
+                    <dd className="flex items-center gap-1.5 font-medium">
+                      <Repeat className="size-3.5" aria-hidden="true" />
+                      {repeatLabel(job.repeatRule)}
+                    </dd>
+                  </div>
+                )}
                 <div className="flex flex-col gap-1 sm:col-span-2">
                   <dt className="text-muted-foreground">Address</dt>
                   <dd className="font-medium">
@@ -175,6 +208,8 @@ export default async function JobDetailPage({
                 )}
               </dl>
             </section>
+
+            <JobFiles jobId={job.id} files={files} />
 
             <InternalNotes
               variant="crew"

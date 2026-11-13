@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { asc, desc, eq } from 'drizzle-orm'
-import { Plus } from 'lucide-react'
+import { Plus, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { CustomerForm } from '@/components/customers/customer-form'
@@ -60,6 +60,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
     .filter((p) => p.status === 'COMPLETED')
     .reduce((s, p) => s + p.amountCents, 0)
 
+  // Most recent order that actually happened; fall back to the latest scheduled one.
+  const lastOrder =
+    customerJobs.find((j) => j.status !== 'canceled' && j.scheduledDate <= today) ??
+    customerJobs.find((j) => j.status !== 'canceled') ??
+    null
+
   return (
     <>
       <PageHeader
@@ -67,10 +73,23 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         title={customer.name}
         description={`${customerJobs.length} job${customerJobs.length === 1 ? '' : 's'} · ${formatMoney(paidTotal)} paid through Square`}
         actions={
-          <Button render={<Link href={`/jobs/new?customer=${customer.id}`} />} nativeButton={false}>
-            <Plus aria-hidden="true" />
-            Schedule job
-          </Button>
+          <>
+            {lastOrder && (
+              <Button
+                variant="outline"
+                render={<Link href={`/jobs/new?from=${lastOrder.id}`} />}
+                nativeButton={false}
+                title={`Copy "${lastOrder.title}" from ${formatDateShort(lastOrder.scheduledDate)}`}
+              >
+                <Repeat aria-hidden="true" />
+                Repeat last order
+              </Button>
+            )}
+            <Button render={<Link href={`/jobs/new?customer=${customer.id}`} />} nativeButton={false}>
+              <Plus aria-hidden="true" />
+              Schedule job
+            </Button>
+          </>
         }
       />
       <PageBody>

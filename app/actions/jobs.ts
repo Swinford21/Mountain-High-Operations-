@@ -9,6 +9,7 @@ import { customers, jobItems, jobNotes, jobs, payments } from '@/lib/db/schema'
 import { sendJobMessage, sendTomorrowReminders } from '@/lib/job-notifications'
 import { JOB_STATUSES } from '@/lib/operations'
 import { getAllOperations } from '@/lib/operations-server'
+import { repeatDates } from '@/lib/recurrence'
 import { requireAdmin, requireUser } from '@/lib/session'
 
 export type ActionState = { ok: boolean; message: string } | null
@@ -52,6 +53,8 @@ const jobSchema = z.object({
     }),
   description: optionalText,
   notifyCustomer: z.string().optional(),
+  repeat: z.enum(['none', 'weekly', 'monthly', 'quarterly']).default('none'),
+  repeatCount: z.coerce.number().int().min(2, 'Repeat at least 2 times').max(52, 'Repeat up to 52 times').default(4),
 })
 
 const itemsSchema = z
@@ -113,31 +116,45 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
     customerId = created.id
   }
 
-  const [job] = await db
+  const dates = repeatDates(data.scheduledDate, data.repeat, data.repeatCount)
+  const repeating = dates.length > 1
+  const seriesId = repeating ? crypto.randomUUID() : null
+  const created = await db
     .insert(jobs)
-    .values({
-      customerId,
-      operation: data.operation,
-      title: data.title,
-      scheduledDate: data.scheduledDate,
-      startTime: data.startTime,
-      durationMinutes: data.durationMinutes,
-      address: data.address,
-      assignedTo: data.assignedTo,
-      truckId: data.truckId ?? null,
-      crewId: data.crewId ?? null,
-      priceCents: data.price,
-      description: data.description,
-      createdBy: admin.id,
-    })
-    .returning({ id: jobs.id })
-  await saveItems(job.id, parseItems(formData))
-  const notes = [
-    data.crewNote && { jobId: job.id, authorId: admin.id, body: data.crewNote, visibility: 'crew' },
-    data.adminNote && { jobId: job.id, authorId: admin.id, body: data.adminNote, visibility: 'admin' },
-  ].filter((n) => !!n)
+    .values(
+      dates.map((scheduledDate) => ({
+        customerId: customerId!,
+        operation: data.operation,
+        title: data.title,
+        scheduledDate,
+        startTime: data.startTime,
+        durationMinutes: data.durationMinutes,
+        address: data.address,
+        assignedTo: data.assignedTo,
+        truckId: data.truckId ?? null,
+        crewId: data.crewId ?? null,
+        priceCents: data.price,
+        description: data.description,
+        seriesId,
+        repeatRule: repeating ? data.repeat : null,
+        createdBy: admin.id,
+      })),
+    )
+    .returning({ id: jobs.id, scheduledDate: jobs.scheduledDate })
+  created.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+  const job = created[0]
+
+  const items = parseItems(formData)
+  const notes = created.flatMap((j) =>
+    [
+      data.crewNote && { jobId: j.id, authorId: admin.id, body: data.crewNote, visibility: 'crew' },
+      data.adminNote && { jobId: j.id, authorId: admin.id, body: data.adminNote, visibility: 'admin' },
+    ].filter((n) => !!n),
+  )
+  if (items.length) await db.insert(jobItems).values(created.flatMap((j) => items.map((i) => ({ ...i, jobId: j.id }))))
   if (notes.length) await db.insert(jobNotes).values(notes)
 
+  // Only the first visit gets a confirmation now; later visits get their usual day-before reminder.
   let sent = -1
   if (data.notifyCustomer === 'on') {
     const result = await sendJobMessage(job.id, 'confirmation')
@@ -145,7 +162,9 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
   }
 
   revalidatePath('/', 'layout')
-  redirect(`/jobs/${job.id}?created=1${sent >= 0 ? `&sent=${sent}` : ''}`)
+  redirect(
+    `/jobs/${job.id}?created=${created.length}${sent >= 0 ? `&sent=${sent}` : ''}`,
+  )
 }
 
 export async function updateJob(jobId: number, _prev: ActionState, formData: FormData): Promise<ActionState> {

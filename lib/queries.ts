@@ -24,7 +24,7 @@ export type CrewOption = Awaited<ReturnType<typeof getCrewOptions>>[number]
 
 export async function getTeamMembers() {
   return db
-    .select({ id: user.id, name: user.name, email: user.email, role: user.role })
+    .select({ id: user.id, name: user.name, email: user.email, role: user.role, position: user.position })
     .from(user)
     .where(ne(user.role, 'pending'))
     .orderBy(asc(user.name))
