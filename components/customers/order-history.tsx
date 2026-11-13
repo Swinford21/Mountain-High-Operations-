@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { PaidMark, StatusBadge } from '@/components/jobs/job-card'
 import type { CustomerHistory, jobs } from '@/lib/db/schema'
-import { getOperation } from '@/lib/operations'
+import { findOperation } from '@/lib/operations'
+import { getAllOperations } from '@/lib/operations-server'
 import type { SquareOrderSummary } from '@/lib/square'
 import { formatDateShort, formatMoney, formatTimestamp } from '@/lib/time'
 
 type Job = typeof jobs.$inferSelect
 
-export function JobList({ title, jobs, empty }: { title: string; jobs: Job[]; empty: string }) {
+export async function JobList({ title, jobs, empty }: { title: string; jobs: Job[]; empty: string }) {
+  const operations = await getAllOperations()
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-semibold">
@@ -18,7 +20,7 @@ export function JobList({ title, jobs, empty }: { title: string; jobs: Job[]; em
       ) : (
         <ul className="flex flex-col divide-y rounded-xl border bg-card">
           {jobs.map((j) => {
-            const op = getOperation(j.operation)
+            const op = findOperation(operations, j.operation)
             return (
               <li key={j.id}>
                 <Link href={`/jobs/${j.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40">
@@ -49,7 +51,8 @@ type HistoryEntry =
   | { kind: 'record'; date: string; record: CustomerHistory }
 
 /** Past jobs scheduled in this app, merged with services imported from the yearly client records. */
-export function JobHistory({ jobs, records }: { jobs: Job[]; records: CustomerHistory[] }) {
+export async function JobHistory({ jobs, records }: { jobs: Job[]; records: CustomerHistory[] }) {
+  const operations = await getAllOperations()
   const entries: HistoryEntry[] = [
     ...jobs.map((job) => ({ kind: 'job' as const, date: job.scheduledDate, job })),
     ...records.map((record) => ({ kind: 'record' as const, date: record.serviceDate, record })),
@@ -67,7 +70,7 @@ export function JobHistory({ jobs, records }: { jobs: Job[]; records: CustomerHi
           {entries.map((e) => {
             if (e.kind === 'job') {
               const j = e.job
-              const op = getOperation(j.operation)
+              const op = findOperation(operations, j.operation)
               return (
                 <li key={`job-${j.id}`}>
                   <Link href={`/jobs/${j.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40">
@@ -88,7 +91,7 @@ export function JobHistory({ jobs, records }: { jobs: Job[]; records: CustomerHi
               )
             }
             const r = e.record
-            const op = getOperation(r.operation)
+            const op = findOperation(operations, r.operation)
             return (
               <li key={`record-${r.id}`} className="flex items-center gap-4 px-4 py-3">
                 <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: op.color }} aria-hidden="true" />

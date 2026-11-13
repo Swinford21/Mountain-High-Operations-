@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { OperationFilter } from '@/components/calendar/operation-filter'
 import { JobCard } from '@/components/jobs/job-card'
-import { OPERATION_IDS } from '@/lib/operations'
+import { getOperations } from '@/lib/operations-server'
 import { getJobsInRange, type JobListItem } from '@/lib/queries'
-import { requireUser } from '@/lib/session'
+import { isAdminRole, requireUser } from '@/lib/session'
 import { addDays, formatDateLong, todayLocal } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
@@ -26,7 +26,8 @@ export default async function JobsPage({
   const sp = await searchParams
   const view = sp.view === 'past' ? 'past' : 'upcoming'
   const mine = sp.mine === '1'
-  const ops = (sp.ops ?? '').split(',').filter((o) => (OPERATION_IDS as readonly string[]).includes(o))
+  const operations = await getOperations()
+  const ops = (sp.ops ?? '').split(',').filter((o) => operations.some((op) => op.id === o))
   const today = todayLocal()
 
   const jobs = await getJobsInRange({
@@ -64,7 +65,7 @@ export default async function JobsPage({
         title="Jobs"
         description={`${jobs.length} ${view === 'past' ? 'past' : 'upcoming'} job${jobs.length === 1 ? '' : 's'}`}
         actions={
-          me.role === 'admin' && (
+          isAdminRole(me.role) && (
             <Button render={<Link href="/jobs/new" />} nativeButton={false} className="h-9">
               <Plus aria-hidden="true" />
               Schedule job
@@ -90,7 +91,7 @@ export default async function JobsPage({
               </Link>
             ))}
           </div>
-          <OperationFilter selected={ops} hrefFor={(o) => href({ ops: o })} mine={mine} mineHref={href({ mine: !mine })} />
+          <OperationFilter operations={operations} selected={ops} hrefFor={(o) => href({ ops: o })} mine={mine} mineHref={href({ mine: !mine })} />
         </div>
 
         {jobs.length === 0 ? (

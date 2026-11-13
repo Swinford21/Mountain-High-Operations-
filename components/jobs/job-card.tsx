@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { MapPin, Truck, User } from 'lucide-react'
+import { MapPin, Truck, User, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getOperation, jobColor, statusLabel } from '@/lib/operations'
+import { findOperation, jobColor, statusLabel } from '@/lib/operations'
 import type { JobListItem } from '@/lib/queries'
 import { formatDateShort, formatTime12 } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -38,7 +38,7 @@ export function PaidMark({ className }: { className?: string }) {
 }
 
 export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?: boolean }) {
-  const op = getOperation(job.operation)
+  const opName = job.operationSingular ?? findOperation([], job.operation).singular
   const address = job.address || job.customerAddress
   return (
     <Link
@@ -52,7 +52,7 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
       <span className="w-1 shrink-0 rounded-full" style={{ backgroundColor: jobColor(job) }} aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{op.singular}</span>
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{opName}</span>
           {job.status !== 'scheduled' && <StatusBadge status={job.status} />}
           {job.paymentStatus === 'paid' && <PaidMark />}
         </div>
@@ -72,6 +72,12 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
             <User className="size-3.5" aria-hidden="true" />
             {job.assigneeName ?? 'Unassigned'}
           </span>
+          {job.crewName && (
+            <span className="flex items-center gap-1">
+              <Users className="size-3.5" aria-hidden="true" />
+              {job.crewName}
+            </span>
+          )}
           {job.truckName && (
             <span className="flex items-center gap-1">
               <Truck className="size-3.5" aria-hidden="true" />

@@ -1,7 +1,8 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { customers, jobItems, jobs } from '@/lib/db/schema'
-import { getOperation } from '@/lib/operations'
+import { findOperation, type Operation } from '@/lib/operations'
+import { getAllOperations } from '@/lib/operations-server'
 import { BUSINESS_NAME, BUSINESS_PHONE, emailLayout, isValidEmail, logMessage, sendEmail, sendSms } from '@/lib/notify'
 import { addDays, formatDateLong, formatTimeWindow, zonedNow } from '@/lib/time'
 
@@ -21,8 +22,12 @@ function firstName(name: string) {
   return name.trim().split(/\s+/)[0] ?? name
 }
 
-function buildMessages(kind: Kind, job: typeof jobs.$inferSelect, customer: typeof customers.$inferSelect) {
-  const op = getOperation(job.operation)
+function buildMessages(
+  kind: Kind,
+  job: typeof jobs.$inferSelect,
+  customer: typeof customers.$inferSelect,
+  op: Operation,
+) {
   const date = formatDateLong(job.scheduledDate)
   const name = firstName(customer.name)
   const address = job.address || customer.address || ''
@@ -48,8 +53,8 @@ export async function sendJobMessage(jobId: number, kind: Kind) {
   const row = await loadJob(jobId)
   if (!row) return { sent: 0, failed: 0, errors: ['Job not found'] }
   const { job, customer } = row
-  const msg = buildMessages(kind, job, customer)
-  const op = getOperation(job.operation)
+  const op = findOperation(await getAllOperations(), job.operation)
+  const msg = buildMessages(kind, job, customer, op)
 
   let sent = 0
   let failed = 0

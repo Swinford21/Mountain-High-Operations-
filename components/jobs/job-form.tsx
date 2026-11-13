@@ -10,9 +10,9 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { AddressInput } from '@/components/address-input'
 import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
-import { OPERATIONS } from '@/lib/operations'
+import type { Operation } from '@/lib/operations'
 import type { ActionState } from '@/app/actions/jobs'
-import type { CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
+import type { CrewOption, CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
 type JobDefaults = {
@@ -25,6 +25,7 @@ type JobDefaults = {
   address?: string | null
   assignedTo?: string | null
   truckId?: number | null
+  crewId?: number | null
   priceCents?: number | null
   description?: string | null
 }
@@ -37,6 +38,8 @@ export function JobForm({
   customers,
   team,
   trucks,
+  crews,
+  operations,
   products,
   initialItems = [],
   defaults,
@@ -46,19 +49,31 @@ export function JobForm({
   customers: CustomerOption[]
   team: TeamMember[]
   trucks: TruckOption[]
+  crews: CrewOption[]
+  operations: Operation[]
   products: ProductOption[]
   initialItems?: MaterialLine[]
   defaults: JobDefaults
   mode: 'create' | 'edit'
 }) {
   const [state, formAction, pending] = useActionState(action, null)
-  const [operation, setOperation] = useState(defaults.operation ?? 'installation')
+  const [operation, setOperation] = useState(defaults.operation ?? operations[0]?.id ?? '')
   const [address, setAddress] = useState(defaults.address ?? '')
   const [title, setTitle] = useState(defaults.title ?? '')
   const [price, setPrice] = useState(defaults.priceCents != null ? (defaults.priceCents / 100).toFixed(2) : '')
   const [priceTouched, setPriceTouched] = useState(defaults.priceCents != null)
   const [truckId, setTruckId] = useState(defaults.truckId != null ? String(defaults.truckId) : '')
   const selectedTruck = trucks.find((t) => String(t.id) === truckId)
+  const [crewId, setCrewId] = useState(defaults.crewId != null ? String(defaults.crewId) : '')
+  const [assignedTo, setAssignedTo] = useState(defaults.assignedTo ?? '')
+
+  function pickCrew(id: string) {
+    setCrewId(id)
+    const crew = crews.find((c) => String(c.id) === id)
+    if (!crew) return
+    if (crew.truckId && trucks.some((t) => t.id === crew.truckId)) setTruckId(String(crew.truckId))
+    if (crew.leadUserId && !assignedTo && team.some((m) => m.id === crew.leadUserId)) setAssignedTo(crew.leadUserId)
+  }
 
   const durationOptions = DURATIONS.includes(defaults.durationMinutes ?? DEFAULT_DURATION)
     ? DURATIONS
@@ -69,7 +84,7 @@ export function JobForm({
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Operation</h2>
         <div role="radiogroup" aria-label="Operation" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {OPERATIONS.map((op) => {
+          {operations.map((op) => {
             const checked = operation === op.id
             return (
               <label
@@ -118,7 +133,7 @@ export function JobForm({
         </div>
       </section>
 
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="scheduledDate">Date</Label>
           <Input id="scheduledDate" name="scheduledDate" type="date" required defaultValue={defaults.scheduledDate} className="h-9" />
@@ -139,11 +154,22 @@ export function JobForm({
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="assignedTo">Assigned to</Label>
-          <NativeSelect id="assignedTo" name="assignedTo" defaultValue={defaults.assignedTo ?? ''}>
+          <NativeSelect id="assignedTo" name="assignedTo" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Unassigned</option>
             {team.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="crewId">Crew</Label>
+          <NativeSelect id="crewId" name="crewId" value={crewId} onChange={(e) => pickCrew(e.target.value)}>
+            <option value="">No crew</option>
+            {crews.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </NativeSelect>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/session'
+import { getCurrentUser, isAdminRole } from '@/lib/session'
 import { entryDurationMs, getEntriesBetween } from '@/lib/time-queries'
 import { addDays, formatClock, localDateOf } from '@/lib/time'
 
@@ -9,7 +9,7 @@ function csvCell(value: string) {
 
 export async function GET(request: Request) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user || !isAdminRole(user.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const week = new URL(request.url).searchParams.get('week') ?? ''
   if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return NextResponse.json({ error: 'Invalid week' }, { status: 400 })

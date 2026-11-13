@@ -6,11 +6,14 @@ import { PageBody, PageHeader } from '@/components/page-header'
 import { JobCard } from '@/components/jobs/job-card'
 import { ClockCard } from '@/components/time/clock-card'
 import { SendRemindersButton } from '@/components/jobs/send-reminders-button'
+import { MilestoneList } from '@/components/hr/milestone-list'
+import { getUpcomingMilestones } from '@/lib/hr'
 import { db } from '@/lib/db'
 import { jobs, user as userTable } from '@/lib/db/schema'
-import { OPERATIONS, getOperation } from '@/lib/operations'
+import { findOperation } from '@/lib/operations'
+import { getOperations } from '@/lib/operations-server'
 import { getJobsInRange } from '@/lib/queries'
-import { requireUser } from '@/lib/session'
+import { isAdminRole, requireUser } from '@/lib/session'
 import { clockProps, getClockedInNow, getOpenEntry, getTodayWorkedMs } from '@/lib/time-queries'
 import { addDays, formatClock, formatDateLong, formatHours, todayLocal, zonedNow } from '@/lib/time'
 
@@ -18,7 +21,7 @@ export const metadata = { title: 'Today' }
 
 export default async function TodayPage() {
   const me = await requireUser()
-  const isAdmin = me.role === 'admin'
+  const isAdmin = isAdminRole(me.role)
   const today = todayLocal()
   const tomorrow = addDays(today, 1)
 
@@ -32,7 +35,7 @@ export default async function TodayPage() {
   const otherJobs = todayJobs.filter((j) => j.assignedTo !== me.id)
   const jobOptions = todayJobs.map((j) => ({
     id: j.id,
-    label: `${j.startTime} · ${getOperation(j.operation).singular} · ${j.customerName}`,
+    label: `${j.startTime} · ${j.operationSingular ?? findOperation([], j.operation).singular} · ${j.customerName}`,
   }))
 
   const firstName = me.name.split(' ')[0]
@@ -109,7 +112,7 @@ async function AdminPanel({
   tomorrow: string
   todayCounts: { operation: string }[]
 }) {
-  const [clockedIn, [reminders], [pendingUsers]] = await Promise.all([
+  const [clockedIn, [reminders], [pendingUsers], operations, milestones] = await Promise.all([
     getClockedInNow(),
     db
       .select({
@@ -119,12 +122,26 @@ async function AdminPanel({
       .from(jobs)
       .where(and(eq(jobs.scheduledDate, tomorrow), eq(jobs.status, 'scheduled'))),
     db.select({ count: sql<number>`count(*)::int` }).from(userTable).where(eq(userTable.role, 'pending')),
+    getOperations(),
+    getUpcomingMilestones(7),
   ])
 
-  const byOp = OPERATIONS.map((op) => ({ ...op, count: todayCounts.filter((j) => j.operation === op.id).length }))
+  const byOp = operations.map((op) => ({ ...op, count: todayCounts.filter((j) => j.operation === op.id).length }))
 
   return (
     <>
+      {milestones.length > 0 && (
+        <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Birthdays &amp; anniversaries</h2>
+            <Link href="/hr" className="text-sm font-medium underline underline-offset-4">
+              HR
+            </Link>
+          </div>
+          <MilestoneList items={milestones} empty="" />
+        </section>
+      )}
+
       <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">Today by operation</h2>
         <ul className="flex flex-col gap-2">

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, serial, integer, date, numeric } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean, serial, integer, date, numeric, primaryKey } from 'drizzle-orm/pg-core'
 
 // --- Better Auth tables (camelCase columns match Better Auth defaults) -----
 
@@ -93,6 +93,7 @@ export const jobs = pgTable('jobs', {
   status: text('status').notNull().default('scheduled'),
   assignedTo: text('assigned_to'),
   truckId: integer('truck_id'),
+  crewId: integer('crew_id'),
   priceCents: integer('price_cents'),
   paymentStatus: text('payment_status').notNull().default('unpaid'),
   confirmationSentAt: timestamp('confirmation_sent_at', { withTimezone: true }),
@@ -108,7 +109,94 @@ export const trucks = pgTable('trucks', {
   color: text('color').notNull(),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  make: text('make'),
+  model: text('model'),
+  year: integer('year'),
+  vin: text('vin'),
+  plate: text('plate'),
+  mileage: integer('mileage'),
+  registrationExpires: date('registration_expires', { mode: 'string' }),
+  insuranceExpires: date('insurance_expires', { mode: 'string' }),
+  notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const truckRepairs = pgTable('truck_repairs', {
+  id: serial('id').primaryKey(),
+  truckId: integer('truck_id').notNull(),
+  repairDate: date('repair_date', { mode: 'string' }).notNull(),
+  description: text('description').notNull(),
+  vendor: text('vendor'),
+  costCents: integer('cost_cents'),
+  mileage: integer('mileage'),
+  coveredByWarranty: boolean('covered_by_warranty').notNull().default(false),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const truckWarranties = pgTable('truck_warranties', {
+  id: serial('id').primaryKey(),
+  truckId: integer('truck_id').notNull(),
+  item: text('item').notNull(),
+  provider: text('provider'),
+  policyNumber: text('policy_number'),
+  startDate: date('start_date', { mode: 'string' }),
+  endDate: date('end_date', { mode: 'string' }),
+  mileageLimit: integer('mileage_limit'),
+  coverage: text('coverage'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Job types (installation, delivery, …). `id` is the slug stored on jobs.operation. */
+export const operations = pgTable('operations', {
+  id: text('id').primaryKey(),
+  label: text('label').notNull(),
+  singular: text('singular').notNull(),
+  color: text('color').notNull(),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const crews = pgTable('crews', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  leadUserId: text('lead_user_id'),
+  truckId: integer('truck_id'),
+  notes: text('notes'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const crewMembers = pgTable(
+  'crew_members',
+  {
+    crewId: integer('crew_id').notNull(),
+    userId: text('user_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.crewId, t.userId] })],
+)
+
+/** HR records. Admin-only. `userId` optionally links the employee to their app login. */
+export const employees = pgTable('employees', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').unique(),
+  name: text('name').notNull(),
+  position: text('position'),
+  email: text('email'),
+  phone: text('phone'),
+  address: text('address'),
+  hireDate: date('hire_date', { mode: 'string' }),
+  birthDate: date('birth_date', { mode: 'string' }),
+  payType: text('pay_type'),
+  payRateCents: integer('pay_rate_cents'),
+  emergencyContactName: text('emergency_contact_name'),
+  emergencyContactPhone: text('emergency_contact_phone'),
+  notes: text('notes'),
+  status: text('status').notNull().default('active'),
+  terminationDate: date('termination_date', { mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const timeEntries = pgTable('time_entries', {
@@ -226,3 +314,7 @@ export type Job = typeof jobs.$inferSelect
 export type TimeEntry = typeof timeEntries.$inferSelect
 export type Payment = typeof payments.$inferSelect
 export type Campaign = typeof campaigns.$inferSelect
+export type Employee = typeof employees.$inferSelect
+export type Truck = typeof trucks.$inferSelect
+export type TruckRepair = typeof truckRepairs.$inferSelect
+export type TruckWarranty = typeof truckWarranties.$inferSelect

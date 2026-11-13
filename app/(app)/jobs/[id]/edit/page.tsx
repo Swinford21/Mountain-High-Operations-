@@ -2,7 +2,16 @@ import { notFound } from 'next/navigation'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { JobForm } from '@/components/jobs/job-form'
 import { updateJob } from '@/app/actions/jobs'
-import { getCustomerOptions, getJobDetail, getJobItems, getProductOptions, getTeamMembers, getTrucks } from '@/lib/queries'
+import {
+  getCrewOptions,
+  getCustomerOptions,
+  getJobDetail,
+  getJobItems,
+  getProductOptions,
+  getTeamMembers,
+  getTrucks,
+} from '@/lib/queries'
+import { getAllOperations } from '@/lib/operations-server'
 import { requireAdmin } from '@/lib/session'
 
 export const metadata = { title: 'Edit job' }
@@ -12,16 +21,20 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const jobId = Number(id)
   if (!Number.isInteger(jobId)) notFound()
-  const [detail, team, products, items, trucks] = await Promise.all([
+  const [detail, team, products, items, trucks, crews, allOperations] = await Promise.all([
     getJobDetail(jobId),
     getTeamMembers(),
     getProductOptions(),
     getJobItems(jobId),
     getTrucks(),
+    getCrewOptions(),
+    getAllOperations(),
   ])
   if (!detail) notFound()
   const { job } = detail
   const customers = await getCustomerOptions(job.customerId)
+  // Keep an archived operation selectable on jobs that already use it.
+  const operations = allOperations.filter((o) => o.active || o.id === job.operation)
 
   return (
     <>
@@ -33,6 +46,8 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           customers={customers}
           team={team}
           trucks={trucks}
+          crews={crews}
+          operations={operations}
           products={products}
           initialItems={items.map((i) => ({
             productId: i.productId,
@@ -51,6 +66,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
             address: job.address,
             assignedTo: job.assignedTo,
             truckId: job.truckId,
+            crewId: job.crewId,
             priceCents: job.priceCents,
             description: job.description,
           }}

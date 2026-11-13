@@ -2,20 +2,23 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { and, eq, gte, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { customers, jobs } from '@/lib/db/schema'
-import { OPERATIONS } from '@/lib/operations'
+import { getOperations } from '@/lib/operations-server'
 import { addDays, todayLocal } from '@/lib/time'
 
 export const LOCATIONS = ['Marietta', 'Smyrna'] as const
 
-export const AUDIENCES = [
-  { id: 'all', label: 'All customers' },
-  { id: 'recent', label: 'Had a job in the last 12 months' },
-  ...LOCATIONS.map((l) => ({ id: `loc:${l}`, label: `${l} yard customers` })),
-  ...OPERATIONS.map((o) => ({ id: `op:${o.id}`, label: `${o.label} customers` })),
-] as const
+export async function getAudiences(): Promise<{ id: string; label: string }[]> {
+  const operations = await getOperations()
+  return [
+    { id: 'all', label: 'All customers' },
+    { id: 'recent', label: 'Had a job in the last 12 months' },
+    ...LOCATIONS.map((l) => ({ id: `loc:${l}`, label: `${l} yard customers` })),
+    ...operations.map((o) => ({ id: `op:${o.id}`, label: `${o.label} customers` })),
+  ]
+}
 
-export function isValidAudience(id: string) {
-  return AUDIENCES.some((a) => a.id === id)
+export async function isValidAudience(id: string) {
+  return (await getAudiences()).some((a) => a.id === id)
 }
 
 function audienceCondition(audience: string): SQL | undefined {
@@ -50,9 +53,9 @@ export async function getRecipients(audience: string, channel: 'email' | 'sms') 
     .where(base ? and(base, ch) : ch)
 }
 
-export async function getAudienceCounts() {
+export async function getAudienceCounts(audiences: { id: string }[]) {
   const entries = await Promise.all(
-    AUDIENCES.map(async (a) => {
+    audiences.map(async (a) => {
       const base = audienceCondition(a.id)
       const [row] = await db
         .select({

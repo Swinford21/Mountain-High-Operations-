@@ -1,8 +1,8 @@
 import { PageBody, PageHeader } from '@/components/page-header'
 import { JobForm } from '@/components/jobs/job-form'
 import { createJob } from '@/app/actions/jobs'
-import { OPERATION_IDS } from '@/lib/operations'
-import { getCustomerOptions, getProductOptions, getTeamMembers, getTrucks } from '@/lib/queries'
+import { getOperations } from '@/lib/operations-server'
+import { getCrewOptions, getCustomerOptions, getProductOptions, getTeamMembers, getTrucks } from '@/lib/queries'
 import { requireAdmin } from '@/lib/session'
 import { todayLocal } from '@/lib/time'
 
@@ -16,11 +16,13 @@ export default async function NewJobPage({
   await requireAdmin()
   const sp = await searchParams
   const customerId = sp.customer ? Number(sp.customer) : undefined
-  const [customers, team, products, trucks] = await Promise.all([
+  const [customers, team, products, trucks, crews, operations] = await Promise.all([
     getCustomerOptions(customerId),
     getTeamMembers(),
     getProductOptions(),
     getTrucks(),
+    getCrewOptions(),
+    getOperations(),
   ])
   const customer = customers[0]
 
@@ -34,11 +36,13 @@ export default async function NewJobPage({
           customers={customers}
           team={team}
           trucks={trucks}
+          crews={crews}
+          operations={operations}
           products={products}
           defaults={{
             customerId: customer?.id,
             address: customer?.address ?? '',
-            operation: sp.op && (OPERATION_IDS as readonly string[]).includes(sp.op) ? sp.op : 'installation',
+            operation: operations.find((o) => o.id === sp.op)?.id ?? operations[0]?.id,
             scheduledDate: sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayLocal(),
           }}
         />

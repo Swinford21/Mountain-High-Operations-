@@ -1,17 +1,19 @@
 import Link from 'next/link'
 import { Check } from 'lucide-react'
-import { OPERATIONS } from '@/lib/operations'
+import type { Operation } from '@/lib/operations'
 import { cn } from '@/lib/utils'
 
 const chip =
   'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30'
 
 export function OperationFilter({
+  operations,
   selected,
   hrefFor,
   mine,
   mineHref,
 }: {
+  operations: Operation[]
   selected: string[]
   hrefFor: (ops: string[]) => string
   mine?: boolean
@@ -27,7 +29,7 @@ export function OperationFilter({
       >
         All operations
       </Link>
-      {OPERATIONS.map((op) => {
+      {operations.map((op) => {
         const active = selected.includes(op.id)
         const nextOps = active ? selected.filter((o) => o !== op.id) : [...selected, op.id]
         return (

@@ -11,9 +11,10 @@ import { db } from '@/lib/db'
 import { jobNotes, messageLog, payments, user } from '@/lib/db/schema'
 import { InternalNotes } from '@/components/jobs/internal-notes'
 import { addAdminNote, addCrewNote, deleteJobNote } from '@/app/actions/job-notes'
-import { getOperation } from '@/lib/operations'
+import { findOperation } from '@/lib/operations'
+import { getAllOperations } from '@/lib/operations-server'
 import { getJobDetail, getJobItems } from '@/lib/queries'
-import { requireUser } from '@/lib/session'
+import { isAdminRole, requireUser } from '@/lib/session'
 import { formatDateLong, formatMoney, formatTime12, formatTimestamp } from '@/lib/time'
 
 export const metadata = { title: 'Job' }
@@ -26,15 +27,15 @@ export default async function JobDetailPage({
   searchParams: Promise<{ created?: string; updated?: string; sent?: string }>
 }) {
   const me = await requireUser()
-  const isAdmin = me.role === 'admin'
+  const isAdmin = isAdminRole(me.role)
   const { id } = await params
   const sp = await searchParams
   const jobId = Number(id)
   if (!Number.isInteger(jobId)) notFound()
   const detail = await getJobDetail(jobId)
   if (!detail) notFound()
-  const { job, customer, assigneeName, truckName, truckColor } = detail
-  const op = getOperation(job.operation)
+  const { job, customer, assigneeName, truckName, truckColor, crewName } = detail
+  const op = findOperation(await getAllOperations(), job.operation)
   const address = job.address || customer.address
   const endMinutes = Number(job.startTime.slice(0, 2)) * 60 + Number(job.startTime.slice(3)) + job.durationMinutes
   const endTime = `${String(Math.floor(endMinutes / 60) % 24).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
@@ -143,6 +144,10 @@ export default async function JobDetailPage({
                     )}
                     {truckName ?? 'No truck'}
                   </dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-muted-foreground">Crew</dt>
+                  <dd className="font-medium">{crewName ?? 'No crew'}</dd>
                 </div>
                 <div className="flex flex-col gap-1 sm:col-span-2">
                   <dt className="text-muted-foreground">Address</dt>
