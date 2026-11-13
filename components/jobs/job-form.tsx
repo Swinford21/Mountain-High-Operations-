@@ -12,6 +12,7 @@ import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
 import type { Operation } from '@/lib/operations'
 import { REPEAT_OPTIONS } from '@/lib/recurrence'
+import { positionLabel } from '@/lib/positions'
 import type { ActionState } from '@/app/actions/jobs'
 import type { CrewOption, CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
 import { cn } from '@/lib/utils'
@@ -161,6 +162,7 @@ export function JobForm({
             {team.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
+                {positionLabel(m.position) ? ` — ${positionLabel(m.position)}` : ''}
               </option>
             ))}
           </NativeSelect>

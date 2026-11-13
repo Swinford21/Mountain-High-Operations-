@@ -10,6 +10,8 @@ export const user = pgTable('user', {
   image: text('image'),
   role: text('role').notNull().default('pending'),
   phone: text('phone'),
+  /** Job position on the crew: manager, installer, driver. Label only; access comes from role. */
+  position: text('position'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
