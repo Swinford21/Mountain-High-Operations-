@@ -94,6 +94,9 @@ export const jobs = pgTable('jobs', {
   assignedTo: text('assigned_to'),
   truckId: integer('truck_id'),
   crewId: integer('crew_id'),
+  /** Jobs created together from one repeating schedule share a series id. */
+  seriesId: text('series_id'),
+  repeatRule: text('repeat_rule'),
   priceCents: integer('price_cents'),
   paymentStatus: text('payment_status').notNull().default('unpaid'),
   confirmationSentAt: timestamp('confirmation_sent_at', { withTimezone: true }),
@@ -283,6 +286,19 @@ export const jobNotes = pgTable('job_notes', {
   body: text('body').notNull(),
   /** 'crew' notes are visible to the whole team; 'admin' notes only to admins. */
   visibility: text('visibility').notNull().default('crew'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Photos and documents attached to a job. Stored in private Blob storage; served through /api/job-files/[id]. */
+export const jobFiles = pgTable('job_files', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').notNull(),
+  pathname: text('pathname').notNull().unique(),
+  filename: text('filename').notNull(),
+  contentType: text('content_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  caption: text('caption'),
+  uploadedBy: text('uploaded_by').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

@@ -11,6 +11,7 @@ import { AddressInput } from '@/components/address-input'
 import { CustomerPicker } from '@/components/jobs/customer-picker'
 import { MaterialsEditor, type MaterialLine } from '@/components/jobs/materials-editor'
 import type { Operation } from '@/lib/operations'
+import { REPEAT_OPTIONS } from '@/lib/recurrence'
 import type { ActionState } from '@/app/actions/jobs'
 import type { CrewOption, CustomerOption, ProductOption, TeamMember, TruckOption } from '@/lib/queries'
 import { cn } from '@/lib/utils'
@@ -66,6 +67,7 @@ export function JobForm({
   const selectedTruck = trucks.find((t) => String(t.id) === truckId)
   const [crewId, setCrewId] = useState(defaults.crewId != null ? String(defaults.crewId) : '')
   const [assignedTo, setAssignedTo] = useState(defaults.assignedTo ?? '')
+  const [repeat, setRepeat] = useState('none')
 
   function pickCrew(id: string) {
     setCrewId(id)
@@ -191,6 +193,42 @@ export function JobForm({
           </NativeSelect>
         </div>
       </section>
+
+      {mode === 'create' && (
+        <section className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-2 sm:w-56">
+            <Label htmlFor="repeat">Repeat</Label>
+            <NativeSelect id="repeat" name="repeat" value={repeat} onChange={(e) => setRepeat(e.target.value)}>
+              {REPEAT_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          {repeat !== 'none' && (
+            <>
+              <div className="flex flex-col gap-2 sm:w-40">
+                <Label htmlFor="repeatCount">Number of visits</Label>
+                <Input
+                  id="repeatCount"
+                  name="repeatCount"
+                  type="number"
+                  min={2}
+                  max={52}
+                  defaultValue={repeat === 'weekly' ? 12 : repeat === 'monthly' ? 6 : 4}
+                  key={repeat}
+                  className="h-9 tabular-nums"
+                />
+              </div>
+              <p className="text-sm leading-relaxed text-muted-foreground sm:pb-2">
+                Each visit is added to the calendar as its own job with the same details and materials. Only the
+                first visit sends a confirmation; every visit gets the day-before reminder.
+              </p>
+            </>
+          )}
+        </section>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="flex flex-col gap-2">
