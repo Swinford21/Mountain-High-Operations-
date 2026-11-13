@@ -6,9 +6,9 @@ import { OperationFilter } from '@/components/calendar/operation-filter'
 import { DaySchedule } from '@/components/calendar/day-schedule'
 import { SalesTotals } from '@/components/calendar/sales-totals'
 import { MonthGrid, dayTotalCents } from '@/components/calendar/month-grid'
-import { OPERATION_IDS } from '@/lib/operations'
+import { getOperations } from '@/lib/operations-server'
 import { getJobsInRange } from '@/lib/queries'
-import { requireUser } from '@/lib/session'
+import { isAdminRole, requireUser } from '@/lib/session'
 import { addDays, formatDateLong, formatMoney, todayLocal } from '@/lib/time'
 
 export const metadata = { title: 'Calendar' }
@@ -31,13 +31,12 @@ export default async function CalendarPage({
   searchParams: Promise<{ month?: string; ops?: string; day?: string; mine?: string }>
 }) {
   const me = await requireUser()
-  const isAdmin = me.role === 'admin'
+  const isAdmin = isAdminRole(me.role)
   const sp = await searchParams
   const today = todayLocal()
   const month = sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : today.slice(0, 7)
-  const selectedOps = (sp.ops ?? '')
-    .split(',')
-    .filter((o): o is (typeof OPERATION_IDS)[number] => (OPERATION_IDS as readonly string[]).includes(o))
+  const operations = await getOperations()
+  const selectedOps = (sp.ops ?? '').split(',').filter((o) => operations.some((op) => op.id === o))
   const mine = sp.mine === '1'
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : month === today.slice(0, 7) ? today : `${month}-01`
 
@@ -71,7 +70,7 @@ export default async function CalendarPage({
         title="Calendar"
         description="Every operation on one calendar. Filter to one or several operations."
         actions={
-          me.role === 'admin' && (
+          isAdmin && (
             <Button render={<Link href={`/jobs/new?date=${day}`} />} nativeButton={false} className="h-9">
               <Plus aria-hidden="true" />
               Schedule job
@@ -82,6 +81,7 @@ export default async function CalendarPage({
       <PageBody>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <OperationFilter
+            operations={operations}
             selected={selectedOps}
             hrefFor={(ops) => buildHref({ ops })}
             mine={mine}

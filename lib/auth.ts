@@ -36,11 +36,11 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // Owner emails become admins automatically. Everyone else signs up as
+        // Owner emails become owners automatically. Everyone else signs up as
         // "pending" until an admin approves them on the Team page.
         before: async (newUser) => {
           const isOwner = OWNER_EMAILS.includes(newUser.email.trim().toLowerCase())
-          return { data: { ...newUser, role: isOwner ? 'admin' : 'pending' } }
+          return { data: { ...newUser, role: isOwner ? 'owner' : 'pending' } }
         },
       },
     },

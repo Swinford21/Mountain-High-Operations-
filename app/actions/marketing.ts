@@ -55,7 +55,7 @@ function buildEmail(body: string, subject: string, name: string, unsubscribeUrl:
 
 export async function sendTestCampaign(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireAdmin()
-  const parsed = campaignSchema.safeParse(Object.fromEntries(formData.entries()))
+  const parsed = await campaignSchema.safeParseAsync(Object.fromEntries(formData.entries()))
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check the form' }
   const d = parsed.data
   if (d.channel === 'sms') return { ok: false, message: 'Test sends go to your email. Switch to Email or Both to test.' }
@@ -67,7 +67,7 @@ export async function sendTestCampaign(_prev: ActionState, formData: FormData): 
 
 export async function sendCampaign(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireAdmin()
-  const parsed = campaignSchema.safeParse(Object.fromEntries(formData.entries()))
+  const parsed = await campaignSchema.safeParseAsync(Object.fromEntries(formData.entries()))
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check the form' }
   const d = parsed.data
   const origin = await siteOrigin()

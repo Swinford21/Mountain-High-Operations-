@@ -9,7 +9,8 @@ import { ImportDialog } from '@/components/customers/import-dialog'
 import { SquareSyncButton } from '@/components/customers/square-sync-button'
 import { db } from '@/lib/db'
 import { customers } from '@/lib/db/schema'
-import { getOperation } from '@/lib/operations'
+import { findOperation } from '@/lib/operations'
+import { getAllOperations } from '@/lib/operations-server'
 import { requireAdmin } from '@/lib/session'
 
 export const metadata = { title: 'Customers' }
@@ -35,7 +36,7 @@ export default async function CustomersPage({
       )
     : undefined
 
-  const [rows, [{ count }]] = await Promise.all([
+  const [rows, [{ count }], operations] = await Promise.all([
     db
       .select({
         id: customers.id,
@@ -54,6 +55,7 @@ export default async function CustomersPage({
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE),
     db.select({ count: sql<number>`count(*)::int` }).from(customers).where(where),
+    getAllOperations(),
   ])
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE))
   const pageHref = (p: number) => `/customers?${new URLSearchParams({ ...(q ? { q } : {}), page: String(p) })}`
@@ -141,10 +143,10 @@ export default async function CustomersPage({
                         <span className="flex items-center gap-2">
                           <span
                             className="size-2.5 rounded-sm"
-                            style={{ backgroundColor: getOperation(c.primaryOperation).color }}
+                            style={{ backgroundColor: findOperation(operations, c.primaryOperation).color }}
                             aria-hidden="true"
                           />
-                          {getOperation(c.primaryOperation).singular}
+                          {findOperation(operations, c.primaryOperation).singular}
                           {c.location && <span className="text-muted-foreground">· {c.location}</span>}
                         </span>
                       ) : (

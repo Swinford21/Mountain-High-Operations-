@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { customers, jobItems, jobNotes, jobs, products, trucks, user } from '@/lib/db/schema'
+import { crews, customers, jobItems, jobNotes, jobs, operations, products, trucks, user } from '@/lib/db/schema'
 
 export async function getTrucks() {
   return db
@@ -11,6 +11,16 @@ export async function getTrucks() {
 }
 
 export type TruckOption = Awaited<ReturnType<typeof getTrucks>>[number]
+
+export async function getCrewOptions() {
+  return db
+    .select({ id: crews.id, name: crews.name, truckId: crews.truckId, leadUserId: crews.leadUserId })
+    .from(crews)
+    .where(eq(crews.active, true))
+    .orderBy(asc(crews.name))
+}
+
+export type CrewOption = Awaited<ReturnType<typeof getCrewOptions>>[number]
 
 export async function getTeamMembers() {
   return db
@@ -75,6 +85,8 @@ export async function getJobsInRange(opts: {
       id: jobs.id,
       title: jobs.title,
       operation: jobs.operation,
+      operationSingular: operations.singular,
+      operationColor: operations.color,
       scheduledDate: jobs.scheduledDate,
       startTime: jobs.startTime,
       durationMinutes: jobs.durationMinutes,
@@ -90,12 +102,16 @@ export async function getJobsInRange(opts: {
       truckId: jobs.truckId,
       truckName: trucks.name,
       truckColor: trucks.color,
+      crewId: jobs.crewId,
+      crewName: crews.name,
       hasCrewNotes: sql<boolean>`exists (select 1 from ${jobNotes} n where n.job_id = ${jobs.id} and n.visibility = 'crew')`,
     })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(user, eq(jobs.assignedTo, user.id))
     .leftJoin(trucks, eq(jobs.truckId, trucks.id))
+    .leftJoin(operations, eq(jobs.operation, operations.id))
+    .leftJoin(crews, eq(jobs.crewId, crews.id))
     .where(and(...conditions))
     .orderBy(asc(jobs.scheduledDate), asc(jobs.startTime))
 }
@@ -104,11 +120,19 @@ export type JobListItem = Awaited<ReturnType<typeof getJobsInRange>>[number]
 
 export async function getJobDetail(id: number) {
   const [row] = await db
-    .select({ job: jobs, customer: customers, assigneeName: user.name, truckName: trucks.name, truckColor: trucks.color })
+    .select({
+      job: jobs,
+      customer: customers,
+      assigneeName: user.name,
+      truckName: trucks.name,
+      truckColor: trucks.color,
+      crewName: crews.name,
+    })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(user, eq(jobs.assignedTo, user.id))
     .leftJoin(trucks, eq(jobs.truckId, trucks.id))
+    .leftJoin(crews, eq(jobs.crewId, crews.id))
     .where(eq(jobs.id, id))
     .limit(1)
   return row ?? null

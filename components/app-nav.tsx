@@ -8,12 +8,15 @@ import {
   CalendarDays,
   ClipboardList,
   CreditCard,
+  IdCard,
   Menu,
   Megaphone,
   Package,
+  Settings,
   Sun,
   Timer,
   TrendingUp,
+  Truck,
   Users,
   UserCog,
 } from 'lucide-react'
@@ -21,6 +24,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/components/sign-out-button'
 import { cn } from '@/lib/utils'
+import { isAdminRole } from '@/lib/session-roles'
 
 const NAV = [
   { href: '/', label: 'Today', icon: Sun, admin: false },
@@ -32,7 +36,10 @@ const NAV = [
   { href: '/payments', label: 'Payments', icon: CreditCard, admin: true },
   { href: '/sales', label: 'Sales Trends', icon: TrendingUp, admin: true },
   { href: '/marketing', label: 'Marketing', icon: Megaphone, admin: true },
+  { href: '/hr', label: 'Human Resources', icon: IdCard, admin: true },
+  { href: '/logistics', label: 'Logistics', icon: Truck, admin: true },
   { href: '/team', label: 'Team', icon: UserCog, admin: true },
+  { href: '/settings', label: 'Settings', icon: Settings, admin: true },
 ]
 
 type NavUser = { name: string; email: string; role: string }
@@ -53,7 +60,7 @@ function Brand() {
 
 function NavLinks({ user, onNavigate }: { user: NavUser; onNavigate?: () => void }) {
   const pathname = usePathname()
-  const items = NAV.filter((i) => !i.admin || user.role === 'admin')
+  const items = NAV.filter((i) => !i.admin || isAdminRole(user.role))
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
       {items.map((item) => {

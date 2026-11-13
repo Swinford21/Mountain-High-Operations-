@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { ClockCard } from '@/components/time/clock-card'
 import { EntryEditDialog } from '@/components/time/entry-edit-dialog'
-import { getOperation } from '@/lib/operations'
+import { findOperation } from '@/lib/operations'
 import { getJobsInRange } from '@/lib/queries'
-import { requireUser } from '@/lib/session'
+import { isAdminRole, requireUser } from '@/lib/session'
 import { clockProps, entryDurationMs, getEntriesBetween, getOpenEntry, type EntryRow } from '@/lib/time-queries'
 import {
   addDays,
@@ -33,7 +33,7 @@ export default async function TimePage({
   searchParams: Promise<{ view?: string; week?: string }>
 }) {
   const me = await requireUser()
-  const isAdmin = me.role === 'admin'
+  const isAdmin = isAdminRole(me.role)
   const sp = await searchParams
   const view = isAdmin && sp.view === 'team' ? 'team' : 'mine'
   const today = todayLocal()
@@ -104,7 +104,7 @@ export default async function TimePage({
               openEntry={clockProps(openEntry)}
               jobOptions={todayJobs.map((j) => ({
                 id: j.id,
-                label: `${j.startTime} · ${getOperation(j.operation).singular} · ${j.customerName}`,
+                label: `${j.startTime} · ${j.operationSingular ?? findOperation([], j.operation).singular} · ${j.customerName}`,
               }))}
               todayTotalLabel={formatHours(todayMs)}
             />

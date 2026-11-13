@@ -3,7 +3,7 @@ import { PageBody, PageHeader } from '@/components/page-header'
 import { CampaignComposer } from '@/components/marketing/campaign-composer'
 import { db } from '@/lib/db'
 import { campaigns } from '@/lib/db/schema'
-import { AUDIENCES, getAudienceCounts } from '@/lib/marketing'
+import { getAudienceCounts, getAudiences } from '@/lib/marketing'
 import { requireAdmin } from '@/lib/session'
 import { formatTimestamp } from '@/lib/time'
 
@@ -14,8 +14,9 @@ const CHANNEL_LABEL: Record<string, string> = { email: 'Email', sms: 'Text', bot
 
 export default async function MarketingPage() {
   await requireAdmin()
+  const audiences = await getAudiences()
   const [counts, history] = await Promise.all([
-    getAudienceCounts(),
+    getAudienceCounts(audiences),
     db.select().from(campaigns).orderBy(desc(campaigns.createdAt)).limit(30),
   ])
 
@@ -28,7 +29,7 @@ export default async function MarketingPage() {
       />
       <PageBody>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <CampaignComposer audiences={AUDIENCES} counts={counts} />
+          <CampaignComposer audiences={audiences} counts={counts} />
           <section className="flex flex-col gap-3">
             <h2 className="font-semibold">Sent campaigns</h2>
             {history.length === 0 ? (
@@ -44,7 +45,7 @@ export default async function MarketingPage() {
                       </span>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {AUDIENCES.find((a) => a.id === c.audience)?.label ?? c.audience}
+                      {audiences.find((a) => a.id === c.audience)?.label ?? c.audience}
                     </span>
                     <span className="text-sm">
                       {c.status === 'sent' ? (

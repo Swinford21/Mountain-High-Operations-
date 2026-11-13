@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { jobNotes, jobs } from '@/lib/db/schema'
-import { requireAdmin, requireUser } from '@/lib/session'
+import { isAdminRole, requireAdmin, requireUser } from '@/lib/session'
 import type { ActionState } from '@/app/actions/jobs'
 
 const noteSchema = z.object({
@@ -40,7 +40,7 @@ export async function deleteJobNote(noteId: number): Promise<ActionState> {
   if (!Number.isInteger(noteId)) return { ok: false, message: 'Invalid note' }
   const [note] = await db.select().from(jobNotes).where(eq(jobNotes.id, noteId)).limit(1)
   if (!note) return { ok: false, message: 'Note not found' }
-  const isAdmin = me.role === 'admin'
+  const isAdmin = isAdminRole(me.role)
   if (note.visibility === 'admin' ? !isAdmin : !isAdmin && note.authorId !== me.id) {
     return { ok: false, message: 'You can only delete your own notes' }
   }

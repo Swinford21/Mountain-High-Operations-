@@ -1,23 +1,42 @@
-export const OPERATIONS = [
-  { id: 'installation', label: 'Installations', singular: 'Installation', color: 'var(--op-installation)' },
-  { id: 'delivery', label: 'Deliveries', singular: 'Delivery', color: 'var(--op-delivery)' },
-  { id: 'hardscape', label: 'Hardscapes', singular: 'Hardscape', color: 'var(--op-hardscape)' },
-  { id: 'lawn_maintenance', label: 'Lawn Maintenance', singular: 'Lawn Maintenance', color: 'var(--op-lawn)' },
-  { id: 'pickup', label: 'Pick Ups', singular: 'Pick Up', color: 'var(--op-pickup)' },
-  { id: 'estimate', label: 'Estimates', singular: 'Estimate', color: 'var(--op-estimate)' },
-] as const
+/**
+ * Operations (job types) live in the `operations` table so admins can add and edit them in Settings.
+ * This module holds the client-safe helpers; load the list with `getOperations()` from `@/lib/operations-server`.
+ */
+export type Operation = {
+  id: string
+  label: string
+  singular: string
+  color: string
+  active: boolean
+  sortOrder: number
+}
 
-export type OperationId = (typeof OPERATIONS)[number]['id']
+export const FALLBACK_OPERATION_COLOR = '#8a8f98'
 
-export const OPERATION_IDS = OPERATIONS.map((o) => o.id) as [OperationId, ...OperationId[]]
+function humanize(id: string) {
+  return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
-export function getOperation(id: string) {
-  return OPERATIONS.find((o) => o.id === id) ?? OPERATIONS[0]
+/** Finds an operation by id, falling back to a neutral placeholder for ids that are no longer in the list. */
+export function findOperation(ops: Operation[], id: string | null | undefined): Operation {
+  const found = ops.find((o) => o.id === id)
+  if (found) return found
+  const name = id ? humanize(id) : 'Other'
+  return { id: id ?? 'other', label: name, singular: name, color: FALLBACK_OPERATION_COLOR, active: false, sortOrder: 999 }
 }
 
 /** A job takes its truck's color once a truck is assigned; otherwise its operation color. */
-export function jobColor(job: { operation: string; truckColor?: string | null }) {
-  return job.truckColor || getOperation(job.operation).color
+export function jobColor(job: { operationColor?: string | null; truckColor?: string | null }) {
+  return job.truckColor || job.operationColor || FALLBACK_OPERATION_COLOR
+}
+
+export function slugifyOperation(label: string) {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40)
 }
 
 export const JOB_STATUSES = [

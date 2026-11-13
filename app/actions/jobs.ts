@@ -7,7 +7,8 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { customers, jobItems, jobNotes, jobs, payments } from '@/lib/db/schema'
 import { sendJobMessage, sendTomorrowReminders } from '@/lib/job-notifications'
-import { JOB_STATUSES, OPERATION_IDS } from '@/lib/operations'
+import { JOB_STATUSES } from '@/lib/operations'
+import { getAllOperations } from '@/lib/operations-server'
 import { requireAdmin, requireUser } from '@/lib/session'
 
 export type ActionState = { ok: boolean; message: string } | null
@@ -27,7 +28,7 @@ const jobSchema = z.object({
   newCustomerBillingAddress: optionalText,
   crewNote: z.string().trim().max(4000, 'Keep crew notes under 4,000 characters').optional(),
   adminNote: z.string().trim().max(4000, 'Keep admin notes under 4,000 characters').optional(),
-  operation: z.enum(OPERATION_IDS),
+  operation: z.string().trim().min(1, 'Pick an operation').max(60),
   title: z.string().trim().min(1, 'Add a short job title').max(200),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Pick a start time'),
@@ -35,6 +36,7 @@ const jobSchema = z.object({
   address: optionalText,
   assignedTo: optionalText,
   truckId: z.coerce.number().int().positive().optional(),
+  crewId: z.coerce.number().int().positive().optional(),
   price: z
     .string()
     .trim()
@@ -91,6 +93,9 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
   const parsed = parseJobForm(formData)
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check the form' }
   const data = parsed.data
+  if (!(await getAllOperations()).some((o) => o.id === data.operation && o.active)) {
+    return { ok: false, message: 'Pick an operation' }
+  }
 
   let customerId = data.customerId
   if (!customerId) {
@@ -120,6 +125,7 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
       address: data.address,
       assignedTo: data.assignedTo,
       truckId: data.truckId ?? null,
+      crewId: data.crewId ?? null,
       priceCents: data.price,
       description: data.description,
       createdBy: admin.id,
@@ -151,6 +157,10 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
 
   const [before] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1)
   if (!before) return { ok: false, message: 'Job not found' }
+  const opAllowed = (await getAllOperations()).some(
+    (o) => o.id === data.operation && (o.active || o.id === before.operation),
+  )
+  if (!opAllowed) return { ok: false, message: 'Pick an operation' }
   const rescheduled = before.scheduledDate !== data.scheduledDate || before.startTime !== data.startTime
 
   await db
@@ -165,6 +175,7 @@ export async function updateJob(jobId: number, _prev: ActionState, formData: For
       address: data.address,
       assignedTo: data.assignedTo,
       truckId: data.truckId ?? null,
+      crewId: data.crewId ?? null,
       priceCents: data.price,
       description: data.description,
       // A new date needs a new day-before reminder.
