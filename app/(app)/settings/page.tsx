@@ -172,7 +172,7 @@ export default async function SettingsPage() {
             Logistics
           </Link>
           . Approve new sign-ups on the{' '}
-          <Link href="/team" className="font-medium text-foreground underline underline-offset-4">
+          <Link href="/hr/team" className="font-medium text-foreground underline underline-offset-4">
             Team
           </Link>{' '}
           page.

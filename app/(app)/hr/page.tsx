@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { asc, ne } from 'drizzle-orm'
+import { asc, eq, ne } from 'drizzle-orm'
 import { Mail, Phone } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { ConfirmDelete } from '@/components/action-feedback'
 import { EmployeeDialog } from '@/components/hr/employee-dialog'
 import { MilestoneList } from '@/components/hr/milestone-list'
+import { HrTabs } from '@/components/hr/hr-tabs'
 import { deleteEmployee } from '@/app/actions/hr'
 import { db } from '@/lib/db'
 import { employees, user } from '@/lib/db/schema'
@@ -36,6 +37,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const milestones = upcomingMilestones(active, REMINDER_WINDOW_DAYS)
   const birthdays = milestones.filter((m) => m.kind === 'birthday')
   const anniversaries = milestones.filter((m) => m.kind === 'anniversary')
+  const pendingCount = await db.$count(user, eq(user.role, 'pending'))
   const linkedIds = new Set(rows.map((e) => e.userId).filter(Boolean))
   const unlinked = logins.filter((l) => !linkedIds.has(l.id))
 
@@ -48,6 +50,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         actions={<EmployeeDialog logins={logins} />}
       />
       <PageBody>
+        <HrTabs current="employees" pendingCount={pendingCount} />
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <section aria-labelledby="emp-heading" className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">

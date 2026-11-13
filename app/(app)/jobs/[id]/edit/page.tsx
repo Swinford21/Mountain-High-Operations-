@@ -4,6 +4,7 @@ import { JobForm } from '@/components/jobs/job-form'
 import { updateJob } from '@/app/actions/jobs'
 import {
   getCrewOptions,
+  getSalespeople,
   getCustomerOptions,
   getJobDetail,
   getJobItems,
@@ -21,7 +22,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const jobId = Number(id)
   if (!Number.isInteger(jobId)) notFound()
-  const [detail, team, products, items, trucks, crews, allOperations] = await Promise.all([
+  const [detail, team, products, items, trucks, crews, allOperations, salespeople] = await Promise.all([
     getJobDetail(jobId),
     getTeamMembers(),
     getProductOptions(),
@@ -29,6 +30,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
     getTrucks(),
     getCrewOptions(),
     getAllOperations(),
+    getSalespeople(),
   ])
   if (!detail) notFound()
   const { job } = detail
@@ -47,6 +49,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           team={team}
           trucks={trucks}
           crews={crews}
+          salespeople={salespeople}
           operations={operations}
           products={products}
           initialItems={items.map((i) => ({
@@ -67,6 +70,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
             assignedTo: job.assignedTo,
             truckId: job.truckId,
             crewId: job.crewId,
+            salespersonId: job.salespersonId,
             priceCents: job.priceCents,
             description: job.description,
           }}

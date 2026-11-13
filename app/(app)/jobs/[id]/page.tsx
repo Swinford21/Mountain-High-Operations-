@@ -36,7 +36,7 @@ export default async function JobDetailPage({
   if (!Number.isInteger(jobId)) notFound()
   const detail = await getJobDetail(jobId)
   if (!detail) notFound()
-  const { job, customer, assigneeName, truckName, truckColor, crewName } = detail
+  const { job, customer, assigneeName, truckName, truckColor, crewName, salespersonName } = detail
   const op = findOperation(await getAllOperations(), job.operation)
   const address = job.address || customer.address
   const endMinutes = Number(job.startTime.slice(0, 2)) * 60 + Number(job.startTime.slice(3)) + job.durationMinutes
@@ -173,6 +173,22 @@ export default async function JobDetailPage({
                   <dt className="text-muted-foreground">Crew</dt>
                   <dd className="font-medium">{crewName ?? 'No crew'}</dd>
                 </div>
+                {isAdmin && (
+                  <div className="flex flex-col gap-1">
+                    <dt className="text-muted-foreground">Salesperson</dt>
+                    <dd className="font-medium">{salespersonName ?? 'None'}</dd>
+                  </div>
+                )}
+                {isAdmin && job.estimateId && (
+                  <div className="flex flex-col gap-1">
+                    <dt className="text-muted-foreground">From estimate</dt>
+                    <dd className="font-medium">
+                      <Link href={`/estimates/${job.estimateId}`} className="underline underline-offset-4">
+                        #{job.estimateId}
+                      </Link>
+                    </dd>
+                  </div>
+                )}
                 {job.repeatRule && (
                   <div className="flex flex-col gap-1">
                     <dt className="text-muted-foreground">Repeats</dt>

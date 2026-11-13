@@ -7,10 +7,10 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { account, products, session, trucks, user } from '@/lib/db/schema'
 import { requireAdmin, requireOwner } from '@/lib/session'
-import { POSITIONS, positionLabel } from '@/lib/positions'
+import { roleLabel } from '@/lib/session-roles'
 import type { ActionState } from '@/app/actions/jobs'
 
-const roleSchema = z.enum(['owner', 'admin', 'crew', 'pending'])
+const roleSchema = z.enum(['owner', 'admin', 'manager', 'installer', 'driver', 'pending'])
 
 export async function setUserRole(userId: string, role: string): Promise<ActionState> {
   const me = await requireAdmin()
@@ -27,25 +27,24 @@ export async function setUserRole(userId: string, role: string): Promise<ActionS
   await db.update(user).set({ role: parsed.data, updatedAt: new Date() }).where(eq(user.id, userId))
   // Revoking access signs them out everywhere.
   if (parsed.data === 'pending') await db.delete(session).where(eq(session.userId, userId))
-  revalidatePath('/team')
+  revalidatePath('/hr/team')
   return {
     ok: true,
-    message: parsed.data === 'pending' ? 'Access removed' : `Role set to ${parsed.data}`,
+    message: parsed.data === 'pending' ? 'Access removed' : `Access set to ${roleLabel(parsed.data)}`,
   }
 }
 
-export async function setUserPosition(userId: string, position: string): Promise<ActionState> {
+export async function setSalesperson(userId: string, isSalesperson: boolean): Promise<ActionState> {
   await requireAdmin()
-  const value = position === '' ? null : POSITIONS.find((p) => p.id === position)?.id
-  if (value === undefined) return { ok: false, message: 'Unknown position' }
   const [updated] = await db
     .update(user)
-    .set({ position: value, updatedAt: new Date() })
+    .set({ isSalesperson, updatedAt: new Date() })
     .where(eq(user.id, userId))
     .returning({ name: user.name })
   if (!updated) return { ok: false, message: 'Team member not found' }
-  revalidatePath('/team')
-  return { ok: true, message: value ? `${updated.name} set as ${positionLabel(value)}` : `Position cleared for ${updated.name}` }
+  revalidatePath('/hr/team')
+  revalidatePath('/sales')
+  return { ok: true, message: isSalesperson ? `${updated.name} marked as a salesperson` : `${updated.name} is no longer a salesperson` }
 }
 
 const passwordSchema = z

@@ -37,7 +37,15 @@ export function PaidMark({ className }: { className?: string }) {
   )
 }
 
-export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?: boolean }) {
+export function JobCard({
+  job,
+  showDate = false,
+  showPayment = true,
+}: {
+  job: JobListItem
+  showDate?: boolean
+  showPayment?: boolean
+}) {
   const opName = job.operationSingular ?? findOperation([], job.operation).singular
   const address = job.address || job.customerAddress
   return (
@@ -54,7 +62,7 @@ export function JobCard({ job, showDate = false }: { job: JobListItem; showDate?
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{opName}</span>
           {job.status !== 'scheduled' && <StatusBadge status={job.status} />}
-          {job.paymentStatus === 'paid' && <PaidMark />}
+          {showPayment && job.paymentStatus === 'paid' && <PaidMark />}
         </div>
         <span className={cn('font-semibold text-pretty group-hover:underline', job.hasCrewNotes && 'text-destructive')}>
           {job.title}

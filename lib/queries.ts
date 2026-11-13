@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/lib/db'
 import { crews, customers, jobItems, jobNotes, jobs, operations, products, trucks, user } from '@/lib/db/schema'
 
@@ -24,11 +25,32 @@ export type CrewOption = Awaited<ReturnType<typeof getCrewOptions>>[number]
 
 export async function getTeamMembers() {
   return db
-    .select({ id: user.id, name: user.name, email: user.email, role: user.role, position: user.position })
+    .select({ id: user.id, name: user.name, email: user.email, role: user.role, isSalesperson: user.isSalesperson })
     .from(user)
     .where(ne(user.role, 'pending'))
     .orderBy(asc(user.name))
 }
+
+export async function getSalespeople() {
+  return db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(and(eq(user.isSalesperson, true), ne(user.role, 'pending')))
+    .orderBy(asc(user.name))
+}
+
+/** Salesperson credit must point at someone flagged as a salesperson on the Team access page. */
+export async function isValidSalesperson(id: string | null) {
+  if (!id) return true
+  const [row] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, id), eq(user.isSalesperson, true)))
+    .limit(1)
+  return !!row
+}
+
+export type SalespersonOption = Awaited<ReturnType<typeof getSalespeople>>[number]
 
 /** Returns the picker option for one customer (the picker searches the rest on demand). */
 export async function getCustomerOptions(id?: number) {
@@ -118,6 +140,8 @@ export async function getJobsInRange(opts: {
 
 export type JobListItem = Awaited<ReturnType<typeof getJobsInRange>>[number]
 
+const salespersonUser = alias(user, 'job_salesperson')
+
 export async function getJobDetail(id: number) {
   const [row] = await db
     .select({
@@ -127,12 +151,14 @@ export async function getJobDetail(id: number) {
       truckName: trucks.name,
       truckColor: trucks.color,
       crewName: crews.name,
+      salespersonName: salespersonUser.name,
     })
     .from(jobs)
     .innerJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(user, eq(jobs.assignedTo, user.id))
     .leftJoin(trucks, eq(jobs.truckId, trucks.id))
     .leftJoin(crews, eq(jobs.crewId, crews.id))
+    .leftJoin(salespersonUser, eq(jobs.salespersonId, salespersonUser.id))
     .where(eq(jobs.id, id))
     .limit(1)
   return row ?? null
