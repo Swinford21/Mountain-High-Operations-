@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { account, products, session, trucks, user } from '@/lib/db/schema'
 import { requireAdmin, requireOwner } from '@/lib/session'
+import { isSquareConfigured, syncSquareCatalog } from '@/lib/square'
 import { roleLabel } from '@/lib/session-roles'
 import type { ActionState } from '@/app/actions/jobs'
 
@@ -91,6 +92,46 @@ export async function setTruckColor(truckId: number, color: string): Promise<Act
   if (!updated) return { ok: false, message: 'Truck not found' }
   revalidatePath('/', 'layout')
   return { ok: true, message: `${updated.name} color updated` }
+}
+
+const newProductSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  category: z.string().trim().min(1, 'Category is required').max(100),
+  unit: z.string().trim().min(1).max(30).default('each'),
+  price: z
+    .string()
+    .trim()
+    .max(20)
+    .transform((v) => (v === '' ? null : Math.round(Number(v.replace(/[$,]/g, '')) * 100)))
+    .refine((v) => v === null || (Number.isInteger(v) && v >= 0 && v <= 100_000_000), 'Enter a valid price'),
+})
+
+export async function createProduct(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
+  await requireAdmin()
+  const parsed = newProductSchema.safeParse({
+    name: formData.get('name') ?? '',
+    category: formData.get('category') ?? '',
+    unit: formData.get('unit') || 'each',
+    price: formData.get('price') ?? '',
+  })
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Check the product details' }
+  const { name, category, unit, price } = parsed.data
+  await db.insert(products).values({ name, category, unit, priceCents: price })
+  revalidatePath('/products')
+  return { ok: true, message: `${name} added` }
+}
+
+export async function syncProductsFromSquare(): Promise<ActionState> {
+  await requireAdmin()
+  if (!isSquareConfigured()) return { ok: false, message: 'Square is not connected' }
+  try {
+    const { added } = await syncSquareCatalog()
+    revalidatePath('/products')
+    return { ok: true, message: added ? `${added} new product${added === 1 ? '' : 's'} added from Square` : 'Already up to date with Square' }
+  } catch (err) {
+    console.error('[square] catalog sync failed', err)
+    return { ok: false, message: 'Could not read the Square catalog' }
+  }
 }
 
 export async function updateProduct(

@@ -8,7 +8,7 @@ import { db } from '@/lib/db'
 import { customers, jobs } from '@/lib/db/schema'
 import { mergeCustomers } from '@/lib/customer-merge'
 import { toE164 } from '@/lib/notify'
-import { isSquareConfigured, syncSquareCustomers, syncSquarePayments } from '@/lib/square'
+import { isSquareConfigured, syncSquareCatalog, syncSquareCustomers, syncSquarePayments } from '@/lib/square'
 import { requireAdmin } from '@/lib/session'
 import type { ActionState } from '@/app/actions/jobs'
 
@@ -158,10 +158,11 @@ export async function syncSquare(): Promise<ActionState> {
   try {
     const c = await syncSquareCustomers()
     const p = await syncSquarePayments()
+    const cat = await syncSquareCatalog()
     revalidatePath('/', 'layout')
     return {
       ok: true,
-      message: `Square synced: ${c.created} new and ${c.updated} updated customers, ${p.upserted} payments.`,
+      message: `Square synced: ${c.created} new and ${c.updated} updated customers, ${p.upserted} payments, ${cat.added} new products.`,
     }
   } catch (err) {
     console.error('[square] sync failed', err)

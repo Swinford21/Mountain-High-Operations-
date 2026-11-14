@@ -1,7 +1,7 @@
-import { SquareClient, SquareEnvironment } from 'square'
+import { SquareClient, SquareEnvironment, type Square } from 'square'
 import { eq, isNull, max, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { customers, payments } from '@/lib/db/schema'
+import { customers, payments, products } from '@/lib/db/schema'
 import { toE164 } from '@/lib/notify'
 
 const DEFAULT_APPLICATION_ID = 'sq0idp-ZkzJ1GRYIkXM2rOiwKnWFw'
@@ -212,6 +212,56 @@ export async function syncSquareCustomers() {
     }
   }
   return { created, updated }
+}
+
+/**
+ * Adds new Square catalog items (one product per variation) and refreshes names and categories.
+ * Prices and Active/Hidden on existing products are left alone so edits made here are kept.
+ */
+export async function syncSquareCatalog() {
+  const categoryNames = new Map<string, string>()
+  const items: Square.CatalogObject[] = []
+  for await (const obj of await getSquare().catalog.list({ types: 'ITEM,CATEGORY' })) {
+    if (obj.isDeleted) continue
+    if (obj.type === 'CATEGORY' && obj.id) categoryNames.set(obj.id, obj.categoryData?.name ?? 'Other')
+    else if (obj.type === 'ITEM') items.push(obj)
+  }
+
+  const existing = new Map(
+    (await db.select({ id: products.id, squareToken: products.squareToken }).from(products))
+      .filter((p) => p.squareToken)
+      .map((p) => [p.squareToken!, p.id]),
+  )
+
+  let added = 0
+  let updated = 0
+  for (const item of items) {
+    if (item.type !== 'ITEM' || !item.itemData) continue
+    const data = item.itemData
+    const categoryId = data.reportingCategory?.id ?? data.categories?.[0]?.id ?? data.categoryId
+    const category = (categoryId && categoryNames.get(categoryId)) || 'Other'
+    const name = (data.name ?? '').trim()
+    if (!name) continue
+
+    for (const v of data.variations ?? []) {
+      if (v.type !== 'ITEM_VARIATION' || !v.id || v.isDeleted) continue
+      const vd = v.itemVariationData
+      const fields = { name, variation: vd?.name?.trim() || null, category, sku: vd?.sku?.trim() || null }
+      const id = existing.get(v.id)
+      if (id) {
+        await db.update(products).set(fields).where(eq(products.id, id))
+        updated++
+      } else if (!data.isArchived) {
+        const price = vd?.pricingType === 'FIXED_PRICING' && vd.priceMoney?.amount != null ? Number(vd.priceMoney.amount) : null
+        await db
+          .insert(products)
+          .values({ ...fields, squareToken: v.id, priceCents: price })
+          .onConflictDoNothing({ target: products.squareToken })
+        added++
+      }
+    }
+  }
+  return { added, updated }
 }
 
 /** Pulls payments since the last sync (or the past year on first run). */

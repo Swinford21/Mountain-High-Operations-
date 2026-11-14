@@ -10,12 +10,14 @@ import { cn } from '@/lib/utils'
 export function ProductRow({
   id,
   name,
+  variation,
   unit,
   priceCents,
   active,
 }: {
   id: number
   name: string
+  variation?: string | null
   unit: string
   priceCents: number | null
   active: boolean
@@ -37,7 +39,10 @@ export function ProductRow({
 
   return (
     <li className={cn('flex flex-wrap items-center gap-3 px-4 py-2.5', !isActive && 'opacity-60')}>
-      <span className="min-w-48 flex-1 text-sm font-medium">{name}</span>
+      <span className="min-w-48 flex-1 text-sm font-medium">
+        {name}
+        {variation && variation !== 'Regular' && <span className="font-normal text-muted-foreground"> · {variation}</span>}
+      </span>
       <label className="flex items-center gap-1.5 text-sm">
         <span className="text-muted-foreground">$</span>
         <span className="sr-only">Price for {name}</span>
