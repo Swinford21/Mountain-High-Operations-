@@ -34,12 +34,15 @@ export function SalesTotals({
   monthLabel,
   weekStart,
   weekEnd,
+  year,
 }: {
   jobs: JobListItem[]
   month: string
   monthLabel: string
   weekStart: string
   weekEnd: string
+  /** Pass when the page loaded the whole year, to add a yearly total. */
+  year?: string
 }) {
   const weekJobs = jobs.filter((j) => j.scheduledDate >= weekStart && j.scheduledDate <= weekEnd)
   const monthJobs = jobs.filter((j) => j.scheduledDate.startsWith(month))
@@ -47,6 +50,7 @@ export function SalesTotals({
     <section aria-label="Sales totals" className="flex flex-col gap-3 sm:flex-row">
       <Total label="Weekly sales" range={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`} jobs={weekJobs} />
       <Total label="Monthly sales" range={monthLabel} jobs={monthJobs} />
+      {year && <Total label="Yearly sales" range={year} jobs={jobs.filter((j) => j.scheduledDate.startsWith(year))} />}
     </section>
   )
 }
