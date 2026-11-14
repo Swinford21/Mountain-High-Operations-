@@ -105,6 +105,9 @@ export const jobs = pgTable('jobs', {
   repeatRule: text('repeat_rule'),
   priceCents: integer('price_cents'),
   paymentStatus: text('payment_status').notNull().default('unpaid'),
+  /** Latest Square pay link sent for this job; its order id ties synced payments back to the job. */
+  paymentLinkUrl: text('payment_link_url'),
+  paymentLinkOrderId: text('payment_link_order_id'),
   confirmationSentAt: timestamp('confirmation_sent_at', { withTimezone: true }),
   reminderSentAt: timestamp('reminder_sent_at', { withTimezone: true }),
   createdBy: text('created_by').notNull(),
@@ -222,6 +225,7 @@ export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
   squarePaymentId: text('square_payment_id').notNull().unique(),
   squareCustomerId: text('square_customer_id'),
+  squareOrderId: text('square_order_id'),
   customerId: integer('customer_id'),
   jobId: integer('job_id'),
   amountCents: integer('amount_cents').notNull(),

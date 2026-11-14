@@ -338,6 +338,7 @@ export function JobForm({
       )}
 
       <div className="flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:gap-8">
         <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"
@@ -352,6 +353,16 @@ export function JobForm({
             <span className="text-muted-foreground">They also get a reminder at 4pm the day before.</span>
           </span>
         </label>
+        {mode === 'create' && (
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" name="takePayment" className="mt-0.5 size-4 accent-[var(--primary)]" />
+            <span className="flex flex-col">
+              <span className="font-medium">Take payment now</span>
+              <span className="text-muted-foreground">Opens the Square card form right after scheduling.</span>
+            </span>
+          </label>
+        )}
+        </div>
         <div className="flex items-center gap-3">
           {state && !state.ok && (
             <p role="alert" className="text-sm text-destructive">
