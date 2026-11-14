@@ -3,6 +3,7 @@ import { and, asc, eq, ilike, type SQL } from 'drizzle-orm'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { PageBody, PageHeader } from '@/components/page-header'
+import { ProductActions } from '@/components/products/product-actions'
 import { ProductRow } from '@/components/products/product-row'
 import { db } from '@/lib/db'
 import { products } from '@/lib/db/schema'
@@ -53,6 +54,7 @@ export default async function ProductsPage({
         eyebrow="Square catalog"
         title="Products"
         description={`${rows.length} product${rows.length === 1 ? '' : 's'}. Prices here fill in automatically when you add materials to a job.`}
+        actions={<ProductActions categories={categories.map((c) => c.category)} defaultCategory={category} />}
       />
       <PageBody>
         <form role="search" className="relative max-w-md">
@@ -93,6 +95,7 @@ export default async function ProductsPage({
                     key={p.id}
                     id={p.id}
                     name={p.name}
+                    variation={p.variation}
                     unit={p.unit}
                     priceCents={p.priceCents}
                     active={p.active}
