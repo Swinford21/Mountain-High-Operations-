@@ -181,7 +181,7 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
 
   revalidatePath('/', 'layout')
   redirect(
-    `/jobs/${job.id}?created=${created.length}${sent >= 0 ? `&sent=${sent}` : ''}`,
+    `/jobs/${job.id}?created=${created.length}${sent >= 0 ? `&sent=${sent}` : ''}${formData.get('takePayment') === 'on' ? '&pay=1' : ''}`,
   )
 }
 

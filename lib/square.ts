@@ -4,18 +4,137 @@ import { db } from '@/lib/db'
 import { customers, payments } from '@/lib/db/schema'
 import { toE164 } from '@/lib/notify'
 
+const DEFAULT_APPLICATION_ID = 'sq0idp-ZkzJ1GRYIkXM2rOiwKnWFw'
+
+function squareToken() {
+  return process.env.SQUARE_ACCESS_TOKEN_2 || process.env.SQUARE_ACCESS_TOKEN
+}
+
+function squareApplicationId() {
+  return process.env.SQUARE_APPLICATION_ID || DEFAULT_APPLICATION_ID
+}
+
+function isSandbox() {
+  return process.env.SQUARE_ENVIRONMENT?.toLowerCase() === 'sandbox' || squareApplicationId().startsWith('sandbox-')
+}
+
 export function isSquareConfigured() {
-  return !!process.env.SQUARE_ACCESS_TOKEN
+  return !!squareToken()
 }
 
 function getSquare() {
   return new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN,
-    environment:
-      process.env.SQUARE_ENVIRONMENT?.toLowerCase() === 'sandbox'
-        ? SquareEnvironment.Sandbox
-        : SquareEnvironment.Production,
+    token: squareToken(),
+    environment: isSandbox() ? SquareEnvironment.Sandbox : SquareEnvironment.Production,
   })
+}
+
+/** Public values the browser needs to load Square's card form. */
+export function getSquareWebConfig() {
+  return { applicationId: squareApplicationId(), sandbox: isSandbox() }
+}
+
+export type SquareLocation = { id: string; name: string }
+
+let locationCache: { at: number; locations: SquareLocation[] } | null = null
+
+/** Active locations that can take card payments. Cached briefly since they rarely change. */
+export async function getSquareLocations(): Promise<SquareLocation[]> {
+  if (!isSquareConfigured()) return []
+  if (locationCache && Date.now() - locationCache.at < 10 * 60 * 1000) return locationCache.locations
+  const { locations } = await getSquare().locations.list()
+  const usable = (locations ?? [])
+    .filter((l) => l.id && l.status === 'ACTIVE' && (l.capabilities ?? []).includes('CREDIT_CARD_PROCESSING'))
+    .map((l) => ({ id: l.id!, name: l.name ?? l.id! }))
+  locationCache = { at: Date.now(), locations: usable }
+  return usable
+}
+
+/** Turns a Square API error into a message staff can act on. */
+export function squareErrorMessage(e: unknown, fallback: string) {
+  const err = e as { statusCode?: number; errors?: { code?: string; detail?: string }[] }
+  if (err.statusCode === 401) return 'Square rejected the access token'
+  const first = err.errors?.[0]
+  const byCode: Record<string, string> = {
+    CARD_DECLINED: 'Card was declined',
+    GENERIC_DECLINE: 'Card was declined',
+    CVV_FAILURE: 'Security code (CVV) did not match',
+    ADDRESS_VERIFICATION_FAILURE: 'ZIP code did not match the card',
+    INVALID_EXPIRATION: 'Card expiration date is invalid',
+    INSUFFICIENT_FUNDS: 'Card has insufficient funds',
+    CARD_EXPIRED: 'Card is expired',
+    INVALID_CARD: 'Card number is invalid',
+    TRANSACTION_LIMIT: 'Amount is over the card limit',
+  }
+  if (first?.code && byCode[first.code]) return byCode[first.code]
+  return first?.detail || fallback
+}
+
+export async function chargeCard(input: {
+  sourceId: string
+  idempotencyKey: string
+  amountCents: number
+  locationId: string
+  jobId: number
+  squareCustomerId: string | null
+  buyerEmail: string | null
+  note: string
+}) {
+  const { payment } = await getSquare().payments.create({
+    sourceId: input.sourceId,
+    idempotencyKey: input.idempotencyKey,
+    amountMoney: { amount: BigInt(input.amountCents), currency: 'USD' },
+    locationId: input.locationId,
+    autocomplete: true,
+    referenceId: `job-${input.jobId}`,
+    note: input.note.slice(0, 500),
+    ...(input.squareCustomerId ? { customerId: input.squareCustomerId } : {}),
+    ...(input.buyerEmail ? { buyerEmailAddress: input.buyerEmail } : {}),
+  })
+  if (!payment?.id) throw new Error('Square did not return a payment')
+  return {
+    squarePaymentId: payment.id,
+    squareOrderId: payment.orderId ?? null,
+    status: payment.status ?? 'UNKNOWN',
+    receiptUrl: payment.receiptUrl ?? null,
+    amountCents: Number(payment.totalMoney?.amount ?? payment.amountMoney?.amount ?? input.amountCents),
+    paidAt: payment.createdAt ? new Date(payment.createdAt) : new Date(),
+  }
+}
+
+export async function createPaymentLink(input: {
+  idempotencyKey: string
+  amountCents: number
+  locationId: string
+  title: string
+  jobId: number
+  buyerEmail: string | null
+  buyerPhone: string | null
+}) {
+  const { paymentLink } = await getSquare().checkout.paymentLinks.create({
+    idempotencyKey: input.idempotencyKey,
+    quickPay: {
+      name: `${input.title} (Job #${input.jobId})`.slice(0, 255),
+      priceMoney: { amount: BigInt(input.amountCents), currency: 'USD' },
+      locationId: input.locationId,
+    },
+    paymentNote: `Job #${input.jobId}`,
+    prePopulatedData: {
+      ...(input.buyerEmail ? { buyerEmail: input.buyerEmail } : {}),
+      ...(toE164(input.buyerPhone) ? { buyerPhoneNumber: toE164(input.buyerPhone)! } : {}),
+    },
+  })
+  if (!paymentLink?.url || !paymentLink.orderId) throw new Error('Square did not return a payment link')
+  return { url: paymentLink.url, orderId: paymentLink.orderId }
+}
+
+/** Completed payments recorded against a job, in cents. */
+export async function jobCollectedCents(jobId: number) {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${payments.amountCents}), 0)::int` })
+    .from(payments)
+    .where(sql`${payments.jobId} = ${jobId} and ${payments.status} = 'COMPLETED'`)
+  return row?.total ?? 0
 }
 
 type SquareAddress = {
@@ -116,6 +235,7 @@ export async function syncSquarePayments() {
     const values = {
       squarePaymentId: p.id,
       squareCustomerId: p.customerId ?? null,
+      squareOrderId: p.orderId ?? null,
       customerId: p.customerId ? (customerBySquareId.get(p.customerId) ?? null) : null,
       amountCents: amount,
       currency: p.totalMoney?.currency ?? p.amountMoney?.currency ?? 'USD',
@@ -135,6 +255,7 @@ export async function syncSquarePayments() {
           customerId: sql`coalesce(${payments.customerId}, ${values.customerId})`,
           receiptUrl: values.receiptUrl,
           note: values.note,
+          squareOrderId: values.squareOrderId,
           syncedAt: new Date(),
         },
       })
@@ -146,6 +267,22 @@ export async function syncSquarePayments() {
     update payments p set customer_id = c.id
     from customers c
     where p.customer_id is null and p.square_customer_id is not null and c.square_customer_id = p.square_customer_id
+  `)
+
+  // Payments made through a job's pay link belong to that job and its customer.
+  await db.execute(sql`
+    update payments p set job_id = j.id, customer_id = coalesce(p.customer_id, j.customer_id)
+    from jobs j
+    where p.job_id is null and p.square_order_id is not null and j.payment_link_order_id = p.square_order_id
+  `)
+  await db.execute(sql`
+    update jobs j set payment_status = 'paid', updated_at = now()
+    from (
+      select job_id, sum(amount_cents) as total from payments
+      where status = 'COMPLETED' and job_id is not null group by job_id
+    ) s
+    where s.job_id = j.id and j.payment_status = 'unpaid' and j.payment_link_order_id is not null
+      and s.total >= coalesce(j.price_cents, 0)
   `)
 
   return { upserted }

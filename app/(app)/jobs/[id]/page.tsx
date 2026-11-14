@@ -18,6 +18,8 @@ import { getJobDetail, getJobItems } from '@/lib/queries'
 import { repeatLabel } from '@/lib/recurrence'
 import { isAdminRole, requireUser } from '@/lib/session'
 import { formatDateLong, formatMoney, formatTime12, formatTimestamp } from '@/lib/time'
+import { getSquareLocations, getSquareWebConfig, isSquareConfigured, jobCollectedCents } from '@/lib/square'
+import { RefreshPaymentsButton, TakePayment } from '@/components/jobs/take-payment'
 
 export const metadata = { title: 'Job' }
 
@@ -26,7 +28,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ created?: string; updated?: string; sent?: string }>
+  searchParams: Promise<{ created?: string; updated?: string; sent?: string; pay?: string }>
 }) {
   const me = await requireUser()
   const isAdmin = isAdminRole(me.role)
@@ -94,6 +96,13 @@ export default async function JobDetailPage({
           .limit(10),
       ])
     : [[], []]
+
+  const squareReady = isAdmin && isSquareConfigured()
+  const squareWeb = getSquareWebConfig()
+  const [collectedCents, squareLocations] = isAdmin
+    ? await Promise.all([jobCollectedCents(job.id), squareReady ? getSquareLocations().catch(() => []) : []])
+    : [0, []]
+  const balanceCents = job.priceCents == null ? null : Math.max(job.priceCents - collectedCents, 0)
 
   const banner =
     sp.created || sp.updated
@@ -278,9 +287,47 @@ export default async function JobDetailPage({
                   <h2 className="font-semibold">Payment</h2>
                   <PaymentToggle jobId={job.id} paid={job.paymentStatus === 'paid'} />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Price: <span className="font-mono text-foreground">{formatMoney(job.priceCents)}</span>
-                </p>
+                <dl className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-muted-foreground">Price</dt>
+                    <dd className="font-mono font-semibold">{formatMoney(job.priceCents)}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-muted-foreground">Collected</dt>
+                    <dd className="font-mono font-semibold text-paid">{formatMoney(collectedCents)}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-muted-foreground">Balance</dt>
+                    <dd className="font-mono font-semibold">{balanceCents == null ? '—' : formatMoney(balanceCents)}</dd>
+                  </div>
+                </dl>
+                {squareReady && (balanceCents == null || balanceCents > 0) && (
+                  <TakePayment
+                    jobId={job.id}
+                    balanceCents={balanceCents}
+                    applicationId={squareWeb.applicationId}
+                    sandbox={squareWeb.sandbox}
+                    locations={squareLocations}
+                    defaultOpen={sp.pay === '1'}
+                    canMessageCustomer={!!(customer.phone || customer.email)}
+                  />
+                )}
+                {job.paymentLinkUrl && (
+                  <div className="flex flex-col gap-2 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <span className="flex min-w-0 flex-col">
+                      <span className="font-medium">Pay link sent</span>
+                      <a
+                        href={job.paymentLinkUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate font-mono text-xs text-muted-foreground underline underline-offset-4"
+                      >
+                        {job.paymentLinkUrl}
+                      </a>
+                    </span>
+                    <RefreshPaymentsButton jobId={job.id} />
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <h3 className="text-sm font-medium">Square payments from this customer</h3>
                   {customerPayments.length === 0 ? (
