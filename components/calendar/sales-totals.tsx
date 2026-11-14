@@ -15,12 +15,12 @@ function summarize(jobs: JobListItem[]) {
 function Total({ label, range, jobs }: { label: string; range: string; jobs: JobListItem[] }) {
   const { total, paid, count } = summarize(jobs)
   return (
-    <div className="flex flex-1 flex-col gap-1 rounded-xl border bg-card px-4 py-3">
-      <span className="flex items-baseline justify-between gap-2 text-sm">
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-lg border bg-card px-3 py-2">
+      <span className="flex items-baseline justify-between gap-2 text-xs">
         <span className="font-medium">{label}</span>
-        <span className="text-xs text-muted-foreground">{range}</span>
+        <span className="truncate text-muted-foreground">{range}</span>
       </span>
-      <span className="font-mono text-2xl font-semibold tabular-nums">{formatMoney(total)}</span>
+      <span className="font-mono text-lg font-semibold tabular-nums">{formatMoney(total)}</span>
       <span className="text-xs text-muted-foreground">
         {count} job{count === 1 ? '' : 's'} · <span className="font-mono tabular-nums">{formatMoney(paid)}</span> paid
       </span>
@@ -30,6 +30,7 @@ function Total({ label, range, jobs }: { label: string; range: string; jobs: Job
 
 export function SalesTotals({
   jobs,
+  day,
   month,
   monthLabel,
   weekStart,
@@ -37,6 +38,7 @@ export function SalesTotals({
   year,
 }: {
   jobs: JobListItem[]
+  day: string
   month: string
   monthLabel: string
   weekStart: string
@@ -47,7 +49,8 @@ export function SalesTotals({
   const weekJobs = jobs.filter((j) => j.scheduledDate >= weekStart && j.scheduledDate <= weekEnd)
   const monthJobs = jobs.filter((j) => j.scheduledDate.startsWith(month))
   return (
-    <section aria-label="Sales totals" className="flex flex-col gap-3 sm:flex-row">
+    <section aria-label="Sales totals" className={`grid grid-cols-2 gap-2 ${year ? 'md:grid-cols-4 lg:grid-cols-5 lg:max-w-5xl' : 'md:grid-cols-4 lg:max-w-4xl'}`}>
+      <Total label="Daily sales" range={formatDateShort(day)} jobs={jobs.filter((j) => j.scheduledDate === day)} />
       <Total label="Weekly sales" range={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`} jobs={weekJobs} />
       <Total label="Monthly sales" range={monthLabel} jobs={monthJobs} />
       {year && <Total label="Yearly sales" range={year} jobs={jobs.filter((j) => j.scheduledDate.startsWith(year))} />}
