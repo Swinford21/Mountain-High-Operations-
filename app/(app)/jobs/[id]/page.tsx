@@ -7,6 +7,7 @@ import { PageBody, PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/jobs/job-card'
 import { JobStatusControl } from '@/components/jobs/job-status-control'
 import { JobAdminActions, PaymentApplyButton, PaymentToggle } from '@/components/jobs/job-admin-actions'
+import { QuickTexts } from '@/components/jobs/quick-texts'
 import { db } from '@/lib/db'
 import { jobFiles, jobNotes, messageLog, payments, user } from '@/lib/db/schema'
 import { JobFiles } from '@/components/jobs/job-files'
@@ -415,6 +416,7 @@ export default async function JobDetailPage({
                 )}
               </div>
             </section>
+            <QuickTexts jobId={job.id} hasPhone={!!customer.phone} />
             {isAdmin && <JobAdminActions jobId={job.id} />}
           </aside>
         </div>

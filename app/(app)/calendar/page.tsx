@@ -168,11 +168,20 @@ export default async function CalendarPage({
         </div>
 
         {isAdmin && (
-          <div className="-mb-3 flex">
+          <div className="-mb-3 flex flex-wrap items-center gap-2">
             <Button render={<Link href={`/jobs/new?date=${day}`} />} nativeButton={false} className="h-9">
               <Plus aria-hidden="true" />
               Schedule job
             </Button>
+            <SalesTotals
+              jobs={jobs}
+              day={day}
+              month={month}
+              monthLabel={monthLabel}
+              weekStart={weekStart}
+              weekEnd={weekEnd}
+              year={view === 'year' ? year : undefined}
+            />
           </div>
         )}
 
@@ -222,18 +231,6 @@ export default async function CalendarPage({
             dayHref={(d) => buildHref({ view: 'day', day: d })}
             monthHref={(m) => buildHref({ view: 'month', day: anchorFor(m) })}
             showTotals={isAdmin}
-          />
-        )}
-
-        {isAdmin && (
-          <SalesTotals
-            jobs={jobs}
-            day={day}
-            month={month}
-            monthLabel={monthLabel}
-            weekStart={weekStart}
-            weekEnd={weekEnd}
-            year={view === 'year' ? year : undefined}
           />
         )}
       </PageBody>
