@@ -120,7 +120,16 @@ export async function logMessage(entry: {
   jobId?: number | null
   campaignId?: number | null
   channel: 'email' | 'sms'
-  kind: 'confirmation' | 'reminder' | 'campaign' | 'estimate' | 'estimate-approved' | 'payment link'
+  kind:
+    | 'confirmation'
+    | 'reminder'
+    | 'campaign'
+    | 'estimate'
+    | 'estimate-approved'
+    | 'payment link'
+    | 'on-our-way'
+    | 'arrived'
+    | 'google-review'
   recipient: string
   result: SendResult
 }) {

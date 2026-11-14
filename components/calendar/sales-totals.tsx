@@ -15,13 +15,13 @@ function summarize(jobs: JobListItem[]) {
 function Total({ label, range, jobs }: { label: string; range: string; jobs: JobListItem[] }) {
   const { total, paid, count } = summarize(jobs)
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-lg border bg-card px-3 py-2">
-      <span className="flex items-baseline justify-between gap-2 text-xs">
-        <span className="font-medium">{label}</span>
-        <span className="truncate text-muted-foreground">{range}</span>
-      </span>
-      <span className="font-mono text-lg font-semibold tabular-nums">{formatMoney(total)}</span>
-      <span className="text-xs text-muted-foreground">
+    <div
+      className="flex h-9 min-w-0 items-center gap-2 rounded-lg border bg-card px-2.5 text-xs"
+      title={`${range} · ${count} job${count === 1 ? '' : 's'} · ${formatMoney(paid)} paid`}
+    >
+      <span className="font-medium">{label}</span>
+      <span className="font-mono text-sm font-semibold tabular-nums">{formatMoney(total)}</span>
+      <span className="hidden whitespace-nowrap text-muted-foreground xl:inline">
         {count} job{count === 1 ? '' : 's'} · <span className="font-mono tabular-nums">{formatMoney(paid)}</span> paid
       </span>
     </div>
@@ -49,11 +49,11 @@ export function SalesTotals({
   const weekJobs = jobs.filter((j) => j.scheduledDate >= weekStart && j.scheduledDate <= weekEnd)
   const monthJobs = jobs.filter((j) => j.scheduledDate.startsWith(month))
   return (
-    <section aria-label="Sales totals" className={`grid grid-cols-2 gap-2 ${year ? 'md:grid-cols-4 lg:grid-cols-5 lg:max-w-5xl' : 'md:grid-cols-4 lg:max-w-4xl'}`}>
-      <Total label="Daily sales" range={formatDateShort(day)} jobs={jobs.filter((j) => j.scheduledDate === day)} />
-      <Total label="Weekly sales" range={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`} jobs={weekJobs} />
-      <Total label="Monthly sales" range={monthLabel} jobs={monthJobs} />
-      {year && <Total label="Yearly sales" range={year} jobs={jobs.filter((j) => j.scheduledDate.startsWith(year))} />}
+    <section aria-label="Sales totals" className="flex flex-wrap items-center gap-2">
+      <Total label="Daily" range={formatDateShort(day)} jobs={jobs.filter((j) => j.scheduledDate === day)} />
+      <Total label="Weekly" range={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`} jobs={weekJobs} />
+      <Total label="Monthly" range={monthLabel} jobs={monthJobs} />
+      {year && <Total label="Yearly" range={year} jobs={jobs.filter((j) => j.scheduledDate.startsWith(year))} />}
     </section>
   )
 }
