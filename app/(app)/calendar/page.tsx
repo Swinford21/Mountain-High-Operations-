@@ -128,14 +128,6 @@ export default async function CalendarPage({
         eyebrow="Schedule"
         title="Calendar"
         description="Every operation on one calendar. Filter to one or several operations."
-        actions={
-          isAdmin && (
-            <Button render={<Link href={`/jobs/new?date=${day}`} />} nativeButton={false} className="h-9">
-              <Plus aria-hidden="true" />
-              Schedule job
-            </Button>
-          )
-        }
       />
       <PageBody>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -176,14 +168,12 @@ export default async function CalendarPage({
         </div>
 
         {isAdmin && (
-          <SalesTotals
-            jobs={jobs}
-            month={month}
-            monthLabel={monthLabel}
-            weekStart={weekStart}
-            weekEnd={weekEnd}
-            year={view === 'year' ? year : undefined}
-          />
+          <div className="-mb-3 flex">
+            <Button render={<Link href={`/jobs/new?date=${day}`} />} nativeButton={false} className="h-9">
+              <Plus aria-hidden="true" />
+              Schedule job
+            </Button>
+          </div>
         )}
 
         {view === 'day' && (
@@ -232,6 +222,18 @@ export default async function CalendarPage({
             dayHref={(d) => buildHref({ view: 'day', day: d })}
             monthHref={(m) => buildHref({ view: 'month', day: anchorFor(m) })}
             showTotals={isAdmin}
+          />
+        )}
+
+        {isAdmin && (
+          <SalesTotals
+            jobs={jobs}
+            day={day}
+            month={month}
+            monthLabel={monthLabel}
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+            year={view === 'year' ? year : undefined}
           />
         )}
       </PageBody>
