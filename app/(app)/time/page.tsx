@@ -7,7 +7,14 @@ import { EntryEditDialog } from '@/components/time/entry-edit-dialog'
 import { findOperation } from '@/lib/operations'
 import { getJobsInRange } from '@/lib/queries'
 import { isAdminRole, requireUser } from '@/lib/session'
-import { clockProps, entryDurationMs, getEntriesBetween, getOpenEntry, type EntryRow } from '@/lib/time-queries'
+import {
+  clockProps,
+  entryDurationMs,
+  getEntriesBetween,
+  getOpenEntry,
+  usesTimeClock,
+  type EntryRow,
+} from '@/lib/time-queries'
 import {
   addDays,
   formatClock,
@@ -40,10 +47,11 @@ export default async function TimePage({
   const weekStart = weekStartOf(sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today)
   const weekEnd = addDays(weekStart, 7)
 
-  const [entries, openEntry, todayJobs] = await Promise.all([
+  const [entries, openEntry, todayJobs, onTimeClock] = await Promise.all([
     getEntriesBetween(weekStart, weekEnd, view === 'team' ? undefined : me.id),
     getOpenEntry(me.id),
     getJobsInRange({ start: today, end: today }),
+    usesTimeClock(me.id),
   ])
 
   const now = Date.now()
@@ -100,14 +108,20 @@ export default async function TimePage({
       <PageBody>
         <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
           <div className="flex flex-col gap-6">
-            <ClockCard
-              openEntry={clockProps(openEntry)}
-              jobOptions={todayJobs.map((j) => ({
-                id: j.id,
-                label: `${j.startTime} · ${j.operationSingular ?? findOperation([], j.operation).singular} · ${j.customerName}`,
-              }))}
-              todayTotalLabel={formatHours(todayMs)}
-            />
+            {onTimeClock || openEntry ? (
+              <ClockCard
+                openEntry={clockProps(openEntry)}
+                jobOptions={todayJobs.map((j) => ({
+                  id: j.id,
+                  label: `${j.startTime} · ${j.operationSingular ?? findOperation([], j.operation).singular} · ${j.customerName}`,
+                }))}
+                todayTotalLabel={formatHours(todayMs)}
+              />
+            ) : (
+              <p className="rounded-xl border bg-card p-4 text-sm leading-relaxed text-muted-foreground">
+                Your account doesn&apos;t use the time clock. An admin can turn it on under HR → Team.
+              </p>
+            )}
             {view === 'team' && (
               <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
                 <h2 className="font-semibold">Week totals</h2>

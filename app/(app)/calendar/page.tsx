@@ -195,7 +195,7 @@ export default async function CalendarPage({
         )}
 
         {view === 'month' && (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
             <MonthGrid
               gridStart={gridStart}
               gridEnd={gridEnd}

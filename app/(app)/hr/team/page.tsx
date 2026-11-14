@@ -6,6 +6,7 @@ import { HrTabs } from '@/components/hr/hr-tabs'
 import { RoleControl } from '@/components/team/role-control'
 import { PasswordDialog } from '@/components/team/password-dialog'
 import { SalespersonToggle } from '@/components/team/salesperson-toggle'
+import { TimeClockToggle } from '@/components/team/time-clock-toggle'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/session'
@@ -31,6 +32,7 @@ export default async function TeamAccessPage() {
       email: user.email,
       role: user.role,
       isSalesperson: user.isSalesperson,
+      usesTimeClock: user.usesTimeClock,
       createdAt: user.createdAt,
     })
     .from(user)
@@ -89,6 +91,7 @@ export default async function TeamAccessPage() {
                   <span className="text-sm text-muted-foreground">{m.email}</span>
                 </span>
                 <span className="flex flex-wrap items-center gap-2">
+                  <TimeClockToggle userId={m.id} name={m.name} checked={m.usesTimeClock} />
                   <SalespersonToggle userId={m.id} name={m.name} checked={m.isSalesperson} />
                   {viewerIsOwner && <PasswordDialog userId={m.id} name={m.name} isSelf={m.id === me.id} />}
                   <RoleControl userId={m.id} role={m.role} isSelf={m.id === me.id} viewerIsOwner={viewerIsOwner} />
@@ -115,6 +118,10 @@ export default async function TeamAccessPage() {
               Sales
             </Link>{' '}
             page.
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Untick <span className="font-medium text-foreground">Clocks in</span> for anyone who doesn&apos;t track hours
+            (salaried or office staff). The time clock is hidden for them.
           </p>
         </section>
       </PageBody>

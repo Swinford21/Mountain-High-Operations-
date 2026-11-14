@@ -50,29 +50,29 @@ export function ClockCard({
   return (
     <section
       aria-label="Time clock"
-      className="flex flex-col gap-5 rounded-xl bg-sidebar p-5 text-sidebar-foreground sm:p-6"
+      className="flex flex-col gap-3 rounded-xl bg-sidebar p-4 text-sidebar-foreground"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-sidebar-primary uppercase">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <p className="flex items-center gap-1.5 text-xs font-semibold tracking-widest text-sidebar-primary uppercase">
             <Timer className="size-3.5" aria-hidden="true" />
             {clockedIn ? 'On the clock' : 'Off the clock'}
+            <span
+              aria-hidden="true"
+              className={`size-2 rounded-full ${clockedIn ? 'animate-pulse bg-sidebar-primary' : 'bg-sidebar-foreground/30'}`}
+            />
           </p>
-          <p className="font-mono text-4xl font-semibold tabular-nums sm:text-5xl" aria-live="polite">
-            {clockedIn ? (now ? elapsed(openEntry.clockInIso, now) : '0:00:00') : todayTotalLabel}
-          </p>
-          <p className="text-sm text-sidebar-foreground/70">
+          <p className="text-xs text-sidebar-foreground/70">
             {clockedIn ? `Since ${openEntry.clockInLabel}` : 'Worked today'}
           </p>
         </div>
-        <span
-          aria-hidden="true"
-          className={`mt-1 size-3 rounded-full ${clockedIn ? 'animate-pulse bg-sidebar-primary' : 'bg-sidebar-foreground/30'}`}
-        />
+        <p className="font-mono text-2xl font-semibold tabular-nums" aria-live="polite">
+          {clockedIn ? (now ? elapsed(openEntry.clockInIso, now) : '0:00:00') : todayTotalLabel}
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="clock-job" className="text-sidebar-foreground/80">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="clock-job" className="text-xs text-sidebar-foreground/80">
           Job (optional)
         </Label>
         <NativeSelect
@@ -99,7 +99,7 @@ export function ClockCard({
           size="lg"
           disabled={pending}
           onClick={() => run(() => clockOut())}
-          className="h-14 bg-sidebar-foreground text-base font-semibold text-sidebar hover:bg-sidebar-foreground/90"
+          className="h-10 bg-sidebar-foreground font-semibold text-sidebar hover:bg-sidebar-foreground/90"
         >
           {pending ? 'Working…' : 'Clock out'}
         </Button>
@@ -108,7 +108,7 @@ export function ClockCard({
           size="lg"
           disabled={pending}
           onClick={() => run(() => clockIn(jobId ? Number(jobId) : null))}
-          className="h-14 bg-sidebar-primary text-base font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
+          className="h-10 bg-sidebar-primary font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
         >
           {pending ? 'Working…' : 'Clock in'}
         </Button>

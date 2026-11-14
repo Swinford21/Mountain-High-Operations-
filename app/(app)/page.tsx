@@ -15,7 +15,7 @@ import { findOperation } from '@/lib/operations'
 import { getOperations } from '@/lib/operations-server'
 import { getJobsInRange } from '@/lib/queries'
 import { isAdminRole, requireUser } from '@/lib/session'
-import { clockProps, getClockedInNow, getOpenEntry, getTodayWorkedMs } from '@/lib/time-queries'
+import { clockProps, getClockedInNow, getOpenEntry, getTodayWorkedMs, usesTimeClock } from '@/lib/time-queries'
 import { addDays, formatClock, formatDateLong, formatHours, todayLocal, zonedNow } from '@/lib/time'
 
 export const metadata = { title: 'Today' }
@@ -26,10 +26,11 @@ export default async function TodayPage() {
   const today = todayLocal()
   const tomorrow = addDays(today, 1)
 
-  const [todayJobs, openEntry, workedMs] = await Promise.all([
+  const [todayJobs, openEntry, workedMs, onTimeClock] = await Promise.all([
     getJobsInRange({ start: today, end: today }),
     getOpenEntry(me.id),
     getTodayWorkedMs(me.id),
+    usesTimeClock(me.id),
   ])
 
   const myJobs = todayJobs.filter((j) => j.assignedTo === me.id)
@@ -97,7 +98,9 @@ export default async function TodayPage() {
           </div>
 
           <aside className="flex flex-col gap-6">
-            <ClockCard openEntry={clockProps(openEntry)} jobOptions={jobOptions} todayTotalLabel={formatHours(workedMs)} />
+            {(onTimeClock || openEntry) && (
+              <ClockCard openEntry={clockProps(openEntry)} jobOptions={jobOptions} todayTotalLabel={formatHours(workedMs)} />
+            )}
             {isAdmin && <AdminPanel tomorrow={tomorrow} todayCounts={todayJobs} />}
           </aside>
         </div>

@@ -7,10 +7,12 @@ import { db } from '@/lib/db'
 import { timeEntries } from '@/lib/db/schema'
 import { requireAdmin, requireUser } from '@/lib/session'
 import { zonedToUtc } from '@/lib/time'
+import { usesTimeClock } from '@/lib/time-queries'
 import type { ActionState } from '@/app/actions/jobs'
 
 export async function clockIn(jobId: number | null, notes?: string): Promise<ActionState> {
   const user = await requireUser()
+  if (!(await usesTimeClock(user.id))) return { ok: false, message: 'Your account is set to not use the time clock' }
   const [open] = await db
     .select({ id: timeEntries.id })
     .from(timeEntries)

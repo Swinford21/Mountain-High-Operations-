@@ -3,6 +3,11 @@ import { db } from '@/lib/db'
 import { jobs, timeEntries, user } from '@/lib/db/schema'
 import { addDays, formatClock, todayLocal, zonedToUtc } from '@/lib/time'
 
+export async function usesTimeClock(userId: string) {
+  const [row] = await db.select({ on: user.usesTimeClock }).from(user).where(eq(user.id, userId)).limit(1)
+  return row?.on ?? true
+}
+
 export async function getOpenEntry(userId: string) {
   const [open] = await db
     .select()

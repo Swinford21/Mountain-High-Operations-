@@ -35,6 +35,21 @@ export async function setUserRole(userId: string, role: string): Promise<ActionS
   }
 }
 
+export async function setUsesTimeClock(userId: string, usesTimeClock: boolean): Promise<ActionState> {
+  await requireAdmin()
+  const [updated] = await db
+    .update(user)
+    .set({ usesTimeClock, updatedAt: new Date() })
+    .where(eq(user.id, userId))
+    .returning({ name: user.name })
+  if (!updated) return { ok: false, message: 'Team member not found' }
+  revalidatePath('/', 'layout')
+  return {
+    ok: true,
+    message: usesTimeClock ? `${updated.name} now clocks in` : `${updated.name} no longer needs to clock in`,
+  }
+}
+
 export async function setSalesperson(userId: string, isSalesperson: boolean): Promise<ActionState> {
   await requireAdmin()
   const [updated] = await db

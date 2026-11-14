@@ -14,6 +14,8 @@ export const user = pgTable('user', {
   position: text('position'),
   /** Salespeople can be credited on estimates and jobs; their totals show on the Sales page. */
   isSalesperson: boolean('is_salesperson').notNull().default(false),
+  /** Off for salaried or office staff who don't clock in; hides the time clock for them. */
+  usesTimeClock: boolean('uses_time_clock').notNull().default(true),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
